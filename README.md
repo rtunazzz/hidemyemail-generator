@@ -4,7 +4,7 @@
 
 _You do need to have an active iCloud+ subscription to be able to generate iCloud emails..._
 
-## Setup
+## Usage
 
 > Python 3.9+ is required!
 
@@ -14,10 +14,27 @@ _You do need to have an active iCloud+ subscription to be able to generate iClou
 git clone https://github.com/rtunazzz/hidemyemail-generator
 ```
 
-2. Install required modules
+2. Install requirements
 
 ```bash
 pip install -r requirements.txt
+```
+
+3. [Add your cookie string](https://github.com/rtunazzz/hidemyemail-generator#getting-icloud-cookie-string)
+
+   > You only need to do this once 🙂
+
+4. You can now run the gen with either
+   **on Mac:**
+
+```bash
+python3 main.py
+```
+
+**on Windows:**
+
+```bash
+python main.py
 ```
 
 ## Getting iCloud cookie string
@@ -36,7 +53,7 @@ pip install -r requirements.txt
 
 <p align="center"><img src="docs/export-cookies.png" width=70%></p>
 
-5. Remove the following lines from the `cookie.txt` file:
+5. Paste the exported cookies into a file called `cookie.txt` and remove the following lines:
 
 ```txt
 // Semicolon separated Cookie File
@@ -44,3 +61,5 @@ pip install -r requirements.txt
 // Details: http://www.ietf.org/rfc/rfc2109.txt
 // Example: http://www.tutorialspoint.com/javascript/javascript_cookies.htm
 ```
+
+Your file should now have only one line. It should look similar to the [cookie.example.txt])(./cookie.example.txt) file, just longer.
