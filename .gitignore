@@ -2,3 +2,4 @@
 venv/
 emails.txt
 cookie.txt
+**/.DS_Store
