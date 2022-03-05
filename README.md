@@ -1,4 +1,4 @@
-#iCloud HideMyEmail Generator
+# iCloud HideMyEmail Generator
 
 > Automated generation of Apple's iCloud emails via HideMyEmail.
 
@@ -62,4 +62,4 @@ python main.py
 // Example: http://www.tutorialspoint.com/javascript/javascript_cookies.htm
 ```
 
-Your file should now have only one line. It should look similar to the [cookie.example.txt])(./cookie.example.txt) file, just longer.
+Your file should now have only one line. It should look similar to the [cookie.example.txt](./cookie.example.txt) file, just longer.
