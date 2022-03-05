@@ -8,6 +8,9 @@ _You do need to have an active iCloud+ subscription to be able to generate iClou
 
 ## Usage
 
+You can get prebuild binaries for Windows & ARM Macs from the [releases page](https://github.com/rtunazzz/hidemyemail-generator/releases). Follow the guide steps 1 & 2 below if you'd like to run it from source, otherwise you can skip to the 3rd step - set your cookie and run.
+
+## Setup
 > Python 3.9+ is required!
 
 1. Clone this repository
