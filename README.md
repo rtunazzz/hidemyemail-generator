@@ -63,3 +63,9 @@ python main.py
 ```
 
 Your file should now have only one line. It should look similar to the [cookie.example.txt](./cookie.example.txt) file, just longer.
+
+# License
+
+Licensed under the MIT License - see the [LICENSE file](./LICENSE) for more details.
+
+Made by **[rtuna](https://twitter.com/rtunazzz)**.
