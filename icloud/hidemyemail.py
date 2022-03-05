@@ -40,7 +40,7 @@ class HideMyEmail:
                 'Sec-Fetch-Dest': "empty",
                 'Referer': "https://www.icloud.com/",
                 'Accept-Language': "en-US,en-GB;q=0.9,en;q=0.8,cs;q=0.7",
-                'Cookie': self.cookies.strip()
+                'Cookie': self.__cookies.strip()
             },
             timeout=aiohttp.ClientTimeout(total=10),
         )
@@ -51,12 +51,13 @@ class HideMyEmail:
         await self.s.close()
 
     @property
-    def cookies(self):
-        return self.cookies
+    def cookies(self) -> str:
+        return self.__cookies
 
     @cookies.setter
     def cookies(self, cookies: str):
-        self.cookies = cookies.strip()  # remove new lines/whitespace for security reasons
+        # remove new lines/whitespace for security reasons
+        self.__cookies = cookies.strip()
 
     async def generate_email(self) -> dict:
         """Generates an email"""
@@ -65,7 +66,7 @@ class HideMyEmail:
                 res = await resp.json()
                 return res
         except asyncio.TimeoutError:
-            return {'error': True, 'reason': "Request timed out"}
+            return {'error': 1, 'reason': "Request timed out"}
 
     async def reserve_email(self, email: str) -> dict:
         """Reserves an email and registers it for forwarding"""
@@ -76,4 +77,4 @@ class HideMyEmail:
                 res = await resp.json()
             return res
         except asyncio.TimeoutError:
-            return {'error': True, 'reason': "Request timed out"}
+            return {'error': 1, 'reason': "Request timed out"}

@@ -4,7 +4,7 @@ from typing import Union, List
 
 
 from rich.text import Text
-from rich.prompt import IntPrompt
+from rich.prompt import IntPrompt, Prompt
 from rich.console import Console
 
 
@@ -15,9 +15,19 @@ MAX_CONCURRENT_TASKS = 10
 
 
 class RichHideMyEmail(HideMyEmail):
+    _cookie_file = 'cookie.txt'
+
     def __init__(self):
         super().__init__()
         self.console = Console()
+
+        if os.path.exists(self._cookie_file):
+            # load in a cookie string from file
+            with open(self._cookie_file, 'r') as f:
+                self.cookies = f.read()
+        else:
+            self.console.log(
+                '[bold yellow][WARN][/] No "cookie.txt" file found! Generation might not work due to unauthorized access.')
 
     async def _generate_one(self) -> Union[str, None]:
         # First, generate an email
@@ -77,7 +87,7 @@ class RichHideMyEmail(HideMyEmail):
             self.console.log(f'Generating {count} email(s)...')
             self.console.rule()
 
-            with self.console.status(f"[bold green]Generating iCloud email(s)...") as status:
+            with self.console.status(f"[bold green]Generating iCloud email(s)..."):
                 while count > 0:
                     batch = await self._generate(count if count < MAX_CONCURRENT_TASKS else MAX_CONCURRENT_TASKS)
                     count -= MAX_CONCURRENT_TASKS
@@ -92,7 +102,7 @@ class RichHideMyEmail(HideMyEmail):
                     f':star: Emails have been saved into the "emails.txt" file')
 
                 self.console.log(
-                    f'[bold green]All done![/] Successfully generated [bold green]{len(emails)}[/] emails')
+                    f'[bold green]All done![/] Successfully generated [bold green]{len(emails)}[/] email(s)')
 
             return emails
         except KeyboardInterrupt:
