@@ -20,7 +20,7 @@ git clone https://github.com/rtunazzz/hidemyemail-generator
 pip install -r requirements.txt
 ```
 
-3. [Add your cookie string](https://github.com/rtunazzz/hidemyemail-generator#getting-icloud-cookie-string)
+3. [Save your cookie string](https://github.com/rtunazzz/hidemyemail-generator#getting-icloud-cookie-string)
 
    > You only need to do this once 🙂
 
