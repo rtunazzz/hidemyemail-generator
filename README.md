@@ -24,8 +24,10 @@ pip install -r requirements.txt
 
    > You only need to do this once 🙂
 
-4. You can now run the gen with either
-   **on Mac:**
+4. You can now run the gen with:
+
+
+**on Mac:**
 
 ```bash
 python3 main.py
