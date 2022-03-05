@@ -1,11 +1,15 @@
-from rich.text import Text
-from icloud import HideMyEmail
 import asyncio
-from typing import Union, List
 import os
+from typing import Union, List
 
+
+from rich.text import Text
 from rich.prompt import IntPrompt
 from rich.console import Console
+
+
+from icloud import HideMyEmail
+
 
 MAX_CONCURRENT_TASKS = 10
 
