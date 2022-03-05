@@ -1,5 +1,7 @@
 **/__pycache__
 venv/
+build/
 emails.txt
 cookie.txt
 **/.DS_Store
+*.spec
