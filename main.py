@@ -69,6 +69,7 @@ class RichHideMyEmail(HideMyEmail):
     async def generate(self) -> List[str]:
         try:
             emails = []
+            self.console.rule()
             s = IntPrompt.ask(
                 Text.assemble(("How many iCloud emails you want to generate?")), console=self.console)
 
