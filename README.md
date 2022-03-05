@@ -4,6 +4,8 @@
 
 _You do need to have an active iCloud+ subscription to be able to generate iCloud emails..._
 
+<p align="center"><img src="docs/example.png"></p>
+
 ## Usage
 
 > Python 3.9+ is required!
