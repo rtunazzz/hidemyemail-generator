@@ -1,4 +1,4 @@
-# iCloud HideMyEmail Generator
+<p align="center"><img width=60% src="docs/header.png"></p>
 
 > Automated generation of Apple's iCloud emails via HideMyEmail.
 
