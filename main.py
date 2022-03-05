@@ -37,7 +37,7 @@ class RichHideMyEmail(HideMyEmail):
             return
 
         email = gen_res['result']['hme']
-        self.console.log(f'"{email}" [50%] - Successfully generated')
+        self.console.log(f'[50%] "{email}" - Successfully generated')
 
         # Then, reserve it
         reserve_res = await self.reserve_email(email)
@@ -52,10 +52,10 @@ class RichHideMyEmail(HideMyEmail):
             elif type(error) == dict and 'errorMessage' in error:
                 err_msg = error['errorMessage']
             self.console.log(
-                f'"{email}" [bold red][ERR][/] - Failed to reserve email. Reason: {err_msg}')
+                f'[bold red][ERR][/] "{email}" - Failed to reserve email. Reason: {err_msg}')
             return
 
-        self.console.log(f'"{email}" [100%]- Successfully reserved')
+        self.console.log(f'[100%] "{email}" - Successfully reserved')
         return email
 
     async def _generate(self, num: int):
