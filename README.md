@@ -62,7 +62,7 @@ python main.py
 
 <p align="center"><img src="docs/export-cookies.png" width=70%></p>
 
-5. Paste the exported cookies into a file named `cookie.txt` and remove the following lines:
+5. Paste the exported cookies into a file named `cookie.txt` and **remove the following lines**:
 
 ```txt
 // Semicolon separated Cookie File
