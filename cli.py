@@ -17,10 +17,11 @@ def generatecommand():
     loop.run_until_complete(generate())
 
 @click.command()
-def listcommand():
+@click.option('--active/--inactive', default=True)
+def listcommand(active):
     "List HME"
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(list())
+    loop.run_until_complete(list(active))
 
 cli.add_command(listcommand) 
 cli.add_command(generatecommand)

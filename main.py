@@ -1,6 +1,8 @@
 import asyncio
 import datetime
+from inspect import isclass
 import os
+from platform import architecture
 from typing import Union, List
 
 
@@ -110,7 +112,7 @@ class RichHideMyEmail(HideMyEmail):
         except KeyboardInterrupt:
             return []
 
-    async def list(self) -> List[str]:
+    async def list(self, active) -> List[str]:
         gen_res = await self.list_email()
         if not gen_res:
             return
@@ -129,9 +131,14 @@ class RichHideMyEmail(HideMyEmail):
         self.table.add_column("Label")
         self.table.add_column("Hide my email")
         self.table.add_column("Created Date Time")
+        self.table.add_column("IsActive")
         for row in gen_res["result"]["hmeEmails"]:
-            self.table.add_row(row["label"], row["hme"],            
-            str(datetime.datetime.fromtimestamp(row["createTimestamp"]/1000)))
+    
+            if row["isActive"] == active:
+                self.table.add_row(row["label"], row["hme"],            
+                str(datetime.datetime.fromtimestamp(row["createTimestamp"]/1000)),
+                str(row["isActive"]))
+      
 
         self.console.print(self.table)
 
@@ -141,9 +148,9 @@ async def generate():
     async with RichHideMyEmail() as i:       
         await i.generate()
 
-async def list():
+async def list(active):
     async with RichHideMyEmail() as i:       
-        await i.list()
+        await i.list(active)
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
