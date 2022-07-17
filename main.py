@@ -1,12 +1,15 @@
 import asyncio
+import datetime
+from inspect import isclass
 import os
+from platform import architecture
 from typing import Union, List
-
+import re
 
 from rich.text import Text
 from rich.prompt import IntPrompt, Prompt
 from rich.console import Console
-
+from rich.table import Table
 
 from icloud import HideMyEmail
 
@@ -20,6 +23,7 @@ class RichHideMyEmail(HideMyEmail):
     def __init__(self):
         super().__init__()
         self.console = Console()
+        self.table = Table()
 
         if os.path.exists(self._cookie_file):
             # load in a cookie string from file
@@ -108,12 +112,54 @@ class RichHideMyEmail(HideMyEmail):
         except KeyboardInterrupt:
             return []
 
+    async def list(self, active, search) -> List[str]:
+        gen_res = await self.list_email()
+        if not gen_res:
+            return
+        elif 'success' not in gen_res or not gen_res['success']:
+            error = gen_res['error'] if 'error' in gen_res else {}
+            err_msg = 'Unknown'
+            if type(error) == int and 'reason' in gen_res:
+                err_msg = gen_res['reason']
+            elif type(error) == dict and 'errorMessage' in error:
+                err_msg = error['errorMessage']
+            self.console.log(
+                f'[bold red][ERR][/] - Failed to generate email. Reason: {err_msg}')
+            return
 
-async def main():
-    async with RichHideMyEmail() as i:
+
+        self.table.add_column("Label")
+        self.table.add_column("Hide my email")
+        self.table.add_column("Created Date Time")
+        self.table.add_column("IsActive")
+        
+        for row in gen_res["result"]["hmeEmails"]:
+    
+            if row["isActive"] == active:
+                if search is not None:
+                    if re.search(search, row["label"]): 
+                        self.table.add_row(row["label"], row["hme"],            
+                        str(datetime.datetime.fromtimestamp(row["createTimestamp"]/1000)),
+                        str(row["isActive"]))           
+                else:
+                    self.table.add_row(row["label"], row["hme"],            
+                    str(datetime.datetime.fromtimestamp(row["createTimestamp"]/1000)),
+                    str(row["isActive"]))
+
+
+        self.console.print(self.table)
+
+
+
+
+async def generate():
+    async with RichHideMyEmail() as i:       
         await i.generate()
 
+async def list(active, search):
+    async with RichHideMyEmail() as i:       
+        await i.list(active, search)
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    loop.run_until_complete(generate())
