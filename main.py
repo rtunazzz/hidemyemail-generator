@@ -4,7 +4,7 @@ from inspect import isclass
 import os
 from platform import architecture
 from typing import Union, List
-
+import re
 
 from rich.text import Text
 from rich.prompt import IntPrompt, Prompt
@@ -112,7 +112,7 @@ class RichHideMyEmail(HideMyEmail):
         except KeyboardInterrupt:
             return []
 
-    async def list(self, active) -> List[str]:
+    async def list(self, active, search) -> List[str]:
         gen_res = await self.list_email()
         if not gen_res:
             return
@@ -132,15 +132,23 @@ class RichHideMyEmail(HideMyEmail):
         self.table.add_column("Hide my email")
         self.table.add_column("Created Date Time")
         self.table.add_column("IsActive")
+        
         for row in gen_res["result"]["hmeEmails"]:
     
             if row["isActive"] == active:
-                self.table.add_row(row["label"], row["hme"],            
-                str(datetime.datetime.fromtimestamp(row["createTimestamp"]/1000)),
-                str(row["isActive"]))
-      
+                if search is not None:
+                    if re.search(search, row["label"]): 
+                        self.table.add_row(row["label"], row["hme"],            
+                        str(datetime.datetime.fromtimestamp(row["createTimestamp"]/1000)),
+                        str(row["isActive"]))           
+                else:
+                    self.table.add_row(row["label"], row["hme"],            
+                    str(datetime.datetime.fromtimestamp(row["createTimestamp"]/1000)),
+                    str(row["isActive"]))
+
 
         self.console.print(self.table)
+
 
 
 
@@ -148,9 +156,9 @@ async def generate():
     async with RichHideMyEmail() as i:       
         await i.generate()
 
-async def list(active):
+async def list(active, search):
     async with RichHideMyEmail() as i:       
-        await i.list(active)
+        await i.list(active, search)
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
