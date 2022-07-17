@@ -78,3 +78,12 @@ class HideMyEmail:
             return res
         except asyncio.TimeoutError:
             return {'error': 1, 'reason': "Request timed out"}
+
+    async def list_email(self) -> dict:
+        """List all HME"""
+        try:
+            async with self.s.get(f'{self.base_url}/list', params=self.params) as resp:
+                res = await resp.json()
+                return res
+        except asyncio.TimeoutError:
+            return {'error': 1, 'reason': "Request timed out"}

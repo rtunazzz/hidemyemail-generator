@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import os
 from typing import Union, List
 
@@ -6,7 +7,7 @@ from typing import Union, List
 from rich.text import Text
 from rich.prompt import IntPrompt, Prompt
 from rich.console import Console
-
+from rich.table import Table
 
 from icloud import HideMyEmail
 
@@ -20,6 +21,7 @@ class RichHideMyEmail(HideMyEmail):
     def __init__(self):
         super().__init__()
         self.console = Console()
+        self.table = Table()
 
         if os.path.exists(self._cookie_file):
             # load in a cookie string from file
@@ -108,12 +110,41 @@ class RichHideMyEmail(HideMyEmail):
         except KeyboardInterrupt:
             return []
 
+    async def list(self) -> List[str]:
+        gen_res = await self.list_email()
+        if not gen_res:
+            return
+        elif 'success' not in gen_res or not gen_res['success']:
+            error = gen_res['error'] if 'error' in gen_res else {}
+            err_msg = 'Unknown'
+            if type(error) == int and 'reason' in gen_res:
+                err_msg = gen_res['reason']
+            elif type(error) == dict and 'errorMessage' in error:
+                err_msg = error['errorMessage']
+            self.console.log(
+                f'[bold red][ERR][/] - Failed to generate email. Reason: {err_msg}')
+            return
 
-async def main():
-    async with RichHideMyEmail() as i:
+
+        self.table.add_column("Label")
+        self.table.add_column("Hide my email")
+        self.table.add_column("Created Date Time")
+        for row in gen_res["result"]["hmeEmails"]:
+            self.table.add_row(row["label"], row["hme"],            
+            str(datetime.datetime.fromtimestamp(row["createTimestamp"]/1000)))
+
+        self.console.print(self.table)
+
+
+
+async def generate():
+    async with RichHideMyEmail() as i:       
         await i.generate()
 
+async def list():
+    async with RichHideMyEmail() as i:       
+        await i.list()
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    loop.run_until_complete(generate())
