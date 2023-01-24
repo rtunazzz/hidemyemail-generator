@@ -1,13 +1,11 @@
 import asyncio
 import datetime
-from inspect import isclass
 import os
-from platform import architecture
 from typing import Union, List
 import re
 
 from rich.text import Text
-from rich.prompt import IntPrompt, Prompt
+from rich.prompt import IntPrompt
 from rich.console import Console
 from rich.table import Table
 
@@ -112,11 +110,12 @@ class RichHideMyEmail(HideMyEmail):
         except KeyboardInterrupt:
             return []
 
-    async def list(self, active, search) -> List[str]:
+    async def list(self, active: bool, search: str) -> None:
         gen_res = await self.list_email()
         if not gen_res:
             return
-        elif 'success' not in gen_res or not gen_res['success']:
+
+        if 'success' not in gen_res or not gen_res['success']:
             error = gen_res['error'] if 'error' in gen_res else {}
             err_msg = 'Unknown'
             if type(error) == int and 'reason' in gen_res:
@@ -126,7 +125,6 @@ class RichHideMyEmail(HideMyEmail):
             self.console.log(
                 f'[bold red][ERR][/] - Failed to generate email. Reason: {err_msg}')
             return
-
 
         self.table.add_column("Label")
         self.table.add_column("Hide my email")
@@ -146,19 +144,16 @@ class RichHideMyEmail(HideMyEmail):
                     str(datetime.datetime.fromtimestamp(row["createTimestamp"]/1000)),
                     str(row["isActive"]))
 
-
         self.console.print(self.table)
 
 
+async def generate() -> None:
+    async with RichHideMyEmail() as hme:
+        await hme.generate()
 
-
-async def generate():
-    async with RichHideMyEmail() as i:       
-        await i.generate()
-
-async def list(active, search):
-    async with RichHideMyEmail() as i:       
-        await i.list(active, search)
+async def list(active: bool, search: str) -> None:
+    async with RichHideMyEmail() as hme:       
+        await hme.list(active, search)
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
