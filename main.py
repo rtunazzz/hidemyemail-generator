@@ -26,7 +26,7 @@ class RichHideMyEmail(HideMyEmail):
         if os.path.exists(self._cookie_file):
             # load in a cookie string from file
             with open(self._cookie_file, "r") as f:
-                self.cookies = [line for line in f if not line.startswith('//')][0]
+                self.cookies = [line for line in f if not line.startswith("//")][0]
         else:
             self.console.log(
                 '[bold yellow][WARN][/] No "cookie.txt" file found! Generation might not work due to unauthorized access.'
