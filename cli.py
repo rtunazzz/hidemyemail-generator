@@ -13,8 +13,11 @@ def cli():
 @click.command()
 def generatecommand():
     "Generate emails"
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(generate())
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(generate())
+    except KeyboardInterrupt:
+        pass
 
 
 @click.command()
@@ -24,8 +27,11 @@ def generatecommand():
 @click.option("--search", default=None, help="Search emails")
 def listcommand(active, search):
     "List emails"
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(list(active, search))
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(list(active, search))
+    except KeyboardInterrupt:
+        pass
 
 
 cli.add_command(listcommand, name="list")
@@ -33,3 +39,10 @@ cli.add_command(generatecommand, name="generate")
 
 if __name__ == "__main__":
     cli()
+
+if __name__ == "__main__":
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(generate())
+    except KeyboardInterrupt:
+        pass
