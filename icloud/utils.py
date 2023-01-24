@@ -2,7 +2,7 @@ import json
 
 
 def read_file_txt(path: str) -> str:
-    f = open(path, 'r')
+    f = open(path, "r")
     content = f.read()
     f.close()
 
@@ -10,7 +10,7 @@ def read_file_txt(path: str) -> str:
 
 
 def read_file_json(path: str) -> dict:
-    f = open(path, 'r')
+    f = open(path, "r")
     content = json.load(f)
     f.close()
 
