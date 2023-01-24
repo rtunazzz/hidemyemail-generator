@@ -12,22 +12,24 @@ def cli():
 
 @click.command()
 def generatecommand():
-    "Generate HME"
+    "Generate emails"
     loop = asyncio.get_event_loop()
     loop.run_until_complete(generate())
 
 
 @click.command()
-@click.option("--active/--inactive", default=True, help="Filter Active / Inactive HME")
-@click.option("--search", default=None, help="Search HME")
+@click.option(
+    "--active/--inactive", default=True, help="Filter Active / Inactive emails"
+)
+@click.option("--search", default=None, help="Search emails")
 def listcommand(active, search):
-    "List HME"
+    "List emails"
     loop = asyncio.get_event_loop()
     loop.run_until_complete(list(active, search))
 
 
-cli.add_command(listcommand)
-cli.add_command(generatecommand)
+cli.add_command(listcommand, name="list")
+cli.add_command(generatecommand, name="generate")
 
 if __name__ == "__main__":
     cli()

@@ -142,20 +142,18 @@ class RichHideMyEmail(HideMyEmail):
         self.table.add_column("IsActive")
 
         for row in gen_res["result"]["hmeEmails"]:
-
             if row["isActive"] == active:
-                if search is not None:
-                    if re.search(search, row["label"]):
-                        self.table.add_row(
-                            row["label"],
-                            row["hme"],
-                            str(
-                                datetime.datetime.fromtimestamp(
-                                    row["createTimestamp"] / 1000
-                                )
-                            ),
-                            str(row["isActive"]),
-                        )
+                if search is not None and re.search(search, row["label"]):
+                    self.table.add_row(
+                        row["label"],
+                        row["hme"],
+                        str(
+                            datetime.datetime.fromtimestamp(
+                                row["createTimestamp"] / 1000
+                            )
+                        ),
+                        str(row["isActive"]),
+                    )
                 else:
                     self.table.add_row(
                         row["label"],
