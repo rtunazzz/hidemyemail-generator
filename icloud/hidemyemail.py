@@ -1,5 +1,7 @@
 import asyncio
 import aiohttp
+import ssl
+import certifi
 
 
 class HideMyEmail:
@@ -25,6 +27,7 @@ class HideMyEmail:
         self.cookies = cookies
 
     async def __aenter__(self):
+        connector = aiohttp.TCPConnector(ssl_context=ssl.create_default_context(cafile=certifi.where())) 
         self.s = aiohttp.ClientSession(
             headers={
                 "Connection": "keep-alive",
@@ -43,6 +46,7 @@ class HideMyEmail:
                 "Cookie": self.__cookies.strip(),
             },
             timeout=aiohttp.ClientTimeout(total=10),
+            connector=connector,
         )
 
         return self
