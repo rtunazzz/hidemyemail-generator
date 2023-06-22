@@ -73,6 +73,8 @@ class HideMyEmail:
                 return res
         except asyncio.TimeoutError:
             return {"error": 1, "reason": "Request timed out"}
+        except Exception as e:
+            return {"error": 1, "reason": str(e)}
 
     async def reserve_email(self, email: str) -> dict:
         """Reserves an email and registers it for forwarding"""
@@ -89,6 +91,8 @@ class HideMyEmail:
             return res
         except asyncio.TimeoutError:
             return {"error": 1, "reason": "Request timed out"}
+        except Exception as e:
+            return {"error": 1, "reason": str(e)}
 
     async def list_email(self) -> dict:
         """List all HME"""
@@ -98,3 +102,6 @@ class HideMyEmail:
                 return res
         except asyncio.TimeoutError:
             return {"error": 1, "reason": "Request timed out"}
+        except Exception as e:
+            return {"error": 1, "reason": str(e)}
+
