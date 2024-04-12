@@ -1,7 +1,7 @@
 import asyncio
 import datetime
 import os
-from typing import Union, List
+from typing import Union, List, Optional
 import re
 
 from rich.text import Text
@@ -81,16 +81,17 @@ class RichHideMyEmail(HideMyEmail):
 
         return filter(lambda e: e is not None, await asyncio.gather(*tasks))
 
-    async def generate(self) -> List[str]:
+    async def generate(self, count: Optional[int]) -> List[str]:
         try:
             emails = []
             self.console.rule()
-            s = IntPrompt.ask(
-                Text.assemble(("How many iCloud emails you want to generate?")),
-                console=self.console,
-            )
+            if count is None:
+                s = IntPrompt.ask(
+                    Text.assemble(("How many iCloud emails you want to generate?")),
+                    console=self.console,
+                )
 
-            count = int(s)
+                count = int(s)
             self.console.log(f"Generating {count} email(s)...")
             self.console.rule()
 
@@ -169,9 +170,9 @@ class RichHideMyEmail(HideMyEmail):
         self.console.print(self.table)
 
 
-async def generate() -> None:
+async def generate(count: Optional[int]) -> None:
     async with RichHideMyEmail() as hme:
-        await hme.generate()
+        await hme.generate(count)
 
 
 async def list(active: bool, search: str) -> None:
@@ -182,6 +183,6 @@ async def list(active: bool, search: str) -> None:
 if __name__ == "__main__":
     loop = asyncio.new_event_loop()
     try:
-        loop.run_until_complete(generate())
+        loop.run_until_complete(generate(None))
     except KeyboardInterrupt:
         pass
