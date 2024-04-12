@@ -8,10 +8,10 @@ class HideMyEmail:
     base_url_v1 = "https://p68-maildomainws.icloud.com/v1/hme"
     base_url_v2 = "https://p68-maildomainws.icloud.com/v2/hme"
     params = {
-        "clientBuildNumber": "2317Project38",
-        "clientMasteringNumber": "2317B22",
+        "clientBuildNumber": "2413Project28",
+        "clientMasteringNumber": "2413B20",
         "clientId": "",
-        "dsid": "",
+        "dsid": "", # Directory Services Identifier (DSID) is a method of identifying AppleID accounts
     }
 
     def __init__(self, label: str = "rtuna's gen", cookies: str = ""):
@@ -34,7 +34,7 @@ class HideMyEmail:
                 "Connection": "keep-alive",
                 "Pragma": "no-cache",
                 "Cache-Control": "no-cache",
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.109 Safari/537.36",
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
                 "Content-Type": "text/plain",
                 "Accept": "*/*",
                 "Sec-GPC": "1",
@@ -68,7 +68,7 @@ class HideMyEmail:
         """Generates an email"""
         try:
             async with self.s.post(
-                f"{self.base_url_v1}/generate", params=self.params
+                f"{self.base_url_v1}/generate", params=self.params, json={"langCode": "en-us"}
             ) as resp:
                 res = await resp.json()
                 return res
