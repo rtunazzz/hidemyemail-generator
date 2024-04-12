@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import asyncio
 import click
 
@@ -11,11 +13,14 @@ def cli():
 
 
 @click.command()
-def generatecommand():
+@click.option(
+    "--count", default=5, help="How many emails to generate", type=int
+)
+def generatecommand(count: int):
     "Generate emails"
     loop = asyncio.new_event_loop()
     try:
-        loop.run_until_complete(generate())
+        loop.run_until_complete(generate(count))
     except KeyboardInterrupt:
         pass
 
@@ -43,6 +48,6 @@ if __name__ == "__main__":
 if __name__ == "__main__":
     loop = asyncio.new_event_loop()
     try:
-        loop.run_until_complete(generate())
+        loop.run_until_complete(generate(None))
     except KeyboardInterrupt:
         pass
