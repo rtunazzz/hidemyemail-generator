@@ -13,7 +13,7 @@ You can get prebuild binaries for Windows & ARM Macs from the [releases page](ht
 Apple allows you to create 5 * # of people in your iCloud familly emails every 30 mins or so. From my experience, they cap the amount of iCloud emails you can generate at ~700.
 
 ## Setup
-> Python 3.9+ is required!
+> Python 3.12+ is required!
 
 1. Clone this repository
 
