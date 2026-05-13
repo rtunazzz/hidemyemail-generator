@@ -1,4 +1,0 @@
-aiohttp==3.9.4
-rich==13.7.1
-click==8.1.7
-certifi==2024.2.2

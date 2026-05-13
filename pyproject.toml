@@ -1,0 +1,30 @@
+[project]
+name = "hidemyemail_generator"
+version = "1.0.0"
+description = "Generate and manage iCloud Hide My Email addresses"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aiohttp>=3.9.4",
+    "rich>=13.7.1",
+    "click>=8.1.7",
+    "certifi>=2024.2.2",
+]
+
+authors = [
+    { name = "rtuna" },
+]
+
+license = { text = "MIT" }
+
+[project.scripts]
+hidemyemail = "hidemyemail_generator.main:cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.12",
+]

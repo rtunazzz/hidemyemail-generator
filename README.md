@@ -13,56 +13,42 @@ You can get prebuild binaries for Windows & ARM Macs from the [releases page](ht
 Apple allows you to create 5 * # of people in your iCloud familly emails every 30 mins or so. From my experience, they cap the amount of iCloud emails you can generate at ~700.
 
 ## Setup
-> Python 3.12+ is required!
+> Python 3.12+ is required. [uv](https://docs.astral.sh/uv/) is recommended.
 
 1. Clone this repository
 
 ```bash
 git clone https://github.com/rtunazzz/hidemyemail-generator
+cd hidemyemail-generator
 ```
 
-2. Install requirements
+2. Install dependencies and create a virtual environment
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 3. [Save your cookie string](https://github.com/rtunazzz/hidemyemail-generator#getting-icloud-cookie-string)
 
    > You only need to do this once 🙂
 
-4. You can now run the gen with:
-
-
-**on Mac:**
+4. Run the CLI
 
 ```bash
-python3 main.py
-```
-
-**on Windows:**
-
-```bash
-python main.py
+uv run hidemyemail generate --label test --count 1
 ```
 
 ## Getting iCloud cookie string
 
 > There is more than one way how you can get the required cookie string but this one is _imo_ the simplest...
 
-1. Download [EditThisCookie](https://chrome.google.com/webstore/detail/editthiscookie/fngmhnnpilhplaeedifhccceomclgfbg) Chrome extension
+1. Download [Cookie Editor](https://cookie-editor.com/) Chrome/Firefox extension
 
-2. Go to [EditThisCookie settings page](chrome-extension://fngmhnnpilhplaeedifhccceomclgfbg/options_pages/user_preferences.html) and set the preferred export format to `Semicolon separated name=value pairs`
+2. Navigate to [iCloud settings](https://www.icloud.com/settings/) in your browser and log in
 
-<p align="center"><img src="docs/cookie-settings.png" width=70%></p>
+3. Open the Cookie Editor extension and click "Export" on the bottom and then "Header String".
 
-3. Navigate to [iCloud settings](https://www.icloud.com/settings/) in your browser and log in
-
-4. Click on the EditThisCookie extension and export cookies
-
-<p align="center"><img src="docs/export-cookies.png" width=70%></p>
-
-5. Paste the exported cookies into a file named `cookie.txt`
+4. Paste the exported cookies into a file named `icloud_cookies.txt`
 
 # License
 
