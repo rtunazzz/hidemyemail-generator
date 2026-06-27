@@ -9,6 +9,7 @@ dependencies = [
     "rich>=13.7.1",
     "click>=8.1.7",
     "certifi>=2024.2.2",
+    "playwright>=1.56.0",
 ]
 
 authors = [

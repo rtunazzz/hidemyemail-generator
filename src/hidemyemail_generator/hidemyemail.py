@@ -4,9 +4,21 @@ import ssl
 import certifi
 
 
+REQUEST_TIMEOUT_SECONDS = 30
+REQUEST_RETRIES = 2
+
+
 class HideMyEmail:
-    base_url_v1 = "https://p68-maildomainws.icloud.com/v1/hme"
-    base_url_v2 = "https://p68-maildomainws.icloud.com/v2/hme"
+    REGION_CONFIG = {
+        "global": {
+            "maildomain_host": "p68-maildomainws.icloud.com",
+            "web_origin": "https://www.icloud.com",
+        },
+        "china": {
+            "maildomain_host": "p217-maildomainws.icloud.com.cn",
+            "web_origin": "https://www.icloud.com.cn",
+        },
+    }
     params = {
         "clientBuildNumber": "2536Project32",
         "clientMasteringNumber": "2536B20",
@@ -14,13 +26,23 @@ class HideMyEmail:
         "dsid": "",  # Directory Services Identifier (DSID) is a method of identifying AppleID accounts
     }
 
-    def __init__(self, cookies: str = ""):
+    def __init__(
+        self, cookies: str = "", region: str = "global", maildomain_host: str = ""
+    ):
         """Initializes the HideMyEmail class.
 
         Args:
-            label (str)     Label that will be set for all emails generated.
-            cookies (str)   Cookie string to be used with requests. Required for authorization.
+            cookies (str) Cookie string to be used with requests. Required for authorization.
+            region (str)  iCloud region to target. Either "global" or "china".
         """
+        if region not in self.REGION_CONFIG:
+            raise ValueError(f'Unsupported iCloud region "{region}"')
+
+        config = self.REGION_CONFIG[region]
+        resolved_maildomain_host = maildomain_host or config["maildomain_host"]
+        self.base_url_v1 = f"https://{resolved_maildomain_host}/v1/hme"
+        self.base_url_v2 = f"https://{resolved_maildomain_host}/v2/hme"
+        self.web_origin = config["web_origin"]
         self.cookies = cookies
 
     async def __aenter__(self):
@@ -36,18 +58,18 @@ class HideMyEmail:
                 "Content-Type": "text/plain",
                 "Accept": "*/*",
                 "Sec-GPC": "1",
-                "Origin": "https://www.icloud.com",
+                "Origin": self.web_origin,
                 "Sec-Fetch-Site": "same-site",
                 "Sec-Fetch-Mode": "cors",
                 "Sec-Fetch-Dest": "empty",
-                "Referer": "https://www.icloud.com/",
+                "Referer": f"{self.web_origin}/",
                 "Accept-Language": "en-US,en-GB;q=0.9,en;q=0.8,cs;q=0.7",
                 "sec-ch-ua": '"Brave";v="141", "Not?A_Brand";v="8", "Chromium";v="141"',
                 "sec-ch-ua-mobile": "?0",
                 "sec-ch-ua-platform": '"macOS"',
                 "Cookie": self.__cookies.strip(),
             },
-            timeout=aiohttp.ClientTimeout(total=10),
+            timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS),
             connector=connector,
         )
 
@@ -65,48 +87,45 @@ class HideMyEmail:
         # remove new lines/whitespace for security reasons
         self.__cookies = cookies.strip()
 
+    async def _request_json(self, method: str, url: str, **kwargs) -> dict:
+        for attempt in range(REQUEST_RETRIES):
+            try:
+                async with self.s.request(method, url, **kwargs) as resp:
+                    return await resp.json()
+            except asyncio.TimeoutError:
+                if attempt == REQUEST_RETRIES - 1:
+                    return {
+                        "error": 1,
+                        "reason": f"Request timed out after {REQUEST_TIMEOUT_SECONDS}s",
+                    }
+            except Exception as e:
+                if attempt == REQUEST_RETRIES - 1:
+                    return {"error": 1, "reason": str(e)}
+
+        return {"error": 1, "reason": "Request failed"}
+
     async def generate_email(self) -> dict:
         """Generates an email"""
-        try:
-            async with self.s.post(
-                f"{self.base_url_v1}/generate",
-                params=self.params,
-                json={"langCode": "en-us"},
-            ) as resp:
-                res = await resp.json()
-                return res
-        except asyncio.TimeoutError:
-            return {"error": 1, "reason": "Request timed out"}
-        except Exception as e:
-            return {"error": 1, "reason": str(e)}
+        return await self._request_json(
+            "POST",
+            f"{self.base_url_v1}/generate",
+            params=self.params,
+            json={"langCode": "en-us"},
+        )
 
     async def reserve_email(self, email: str, label: str, note: str) -> dict:
         """Reserves an email and registers it for forwarding"""
-        try:
-            payload = {
-                "hme": email,
-                "label": label,
-                "note": note,
-            }
-            async with self.s.post(
-                f"{self.base_url_v1}/reserve", params=self.params, json=payload
-            ) as resp:
-                res = await resp.json()
-            return res
-        except asyncio.TimeoutError:
-            return {"error": 1, "reason": "Request timed out"}
-        except Exception as e:
-            return {"error": 1, "reason": str(e)}
+        payload = {
+            "hme": email,
+            "label": label,
+            "note": note,
+        }
+        return await self._request_json(
+            "POST", f"{self.base_url_v1}/reserve", params=self.params, json=payload
+        )
 
     async def list_email(self) -> dict:
         """List all HME"""
-        try:
-            async with self.s.get(
-                f"{self.base_url_v2}/list", params=self.params
-            ) as resp:
-                res = await resp.json()
-                return res
-        except asyncio.TimeoutError:
-            return {"error": 1, "reason": "Request timed out"}
-        except Exception as e:
-            return {"error": 1, "reason": str(e)}
+        return await self._request_json(
+            "GET", f"{self.base_url_v2}/list", params=self.params
+        )
