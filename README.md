@@ -35,7 +35,7 @@ Original project: [rtunazzz/hidemyemail-generator](https://github.com/rtunazzz/h
 ## Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/hidemyemail-generator.git
+git clone https://github.com/never-seek/hidemyemail-generator.git
 cd hidemyemail-generator
 uv sync --python 3.12
 ```
@@ -217,7 +217,7 @@ Cookie 账号识别、自动 Cookie 捕获，以及更稳定的网络超时和�
 ## 安装
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/hidemyemail-generator.git
+git clone https://github.com/never-seek/hidemyemail-generator.git
 cd hidemyemail-generator
 uv sync --python 3.12
 ```
