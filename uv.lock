@@ -312,8 +312,12 @@ dependencies = [
     { name = "aiohttp" },
     { name = "certifi" },
     { name = "click" },
-    { name = "playwright" },
     { name = "rich" },
+]
+
+[package.optional-dependencies]
+capture = [
+    { name = "playwright" },
 ]
 
 [package.dev-dependencies]
@@ -326,9 +330,10 @@ requires-dist = [
     { name = "aiohttp", specifier = ">=3.9.4" },
     { name = "certifi", specifier = ">=2024.2.2" },
     { name = "click", specifier = ">=8.1.7" },
-    { name = "playwright", specifier = ">=1.56.0" },
+    { name = "playwright", marker = "extra == 'capture'", specifier = ">=1.56.0" },
     { name = "rich", specifier = ">=13.7.1" },
 ]
+provides-extras = ["capture"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "ruff", specifier = ">=0.15.12" }]

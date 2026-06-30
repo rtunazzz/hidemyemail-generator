@@ -116,7 +116,8 @@ def load_cookie_context(cookie_file: str, region: str) -> tuple[str, str]:
     if cookie_header:
         return cookie_header.group(1).strip(), maildomain_host
 
-    return normalized_content.splitlines()[0].strip(), maildomain_host
+    lines = normalized_content.splitlines()
+    return (lines[0].strip() if lines else ""), maildomain_host
 
 
 def load_cookie_string(cookie_file: str) -> str:
@@ -905,7 +906,9 @@ async def _capture_cookie(cookie_file: str, region: str = DEFAULT_REGION) -> boo
     try:
         from playwright.async_api import async_playwright
     except ImportError:
-        console.log("[bold red][ERR][/] Playwright is not installed. Run: uv sync")
+        console.log(
+            "[bold red][ERR][/] Playwright is not installed. Run: uv sync --extra capture"
+        )
         return False
 
     profile_dir = Path(".cookie-browser-profile").resolve()

@@ -2,7 +2,7 @@
 setlocal
 
 cd /d "%~dp0"
-set "ICLOUD_REGION=china"
+if not defined HIDEMYEMAIL_REGION set "HIDEMYEMAIL_REGION=global"
 set "PYTHONUTF8=1"
 set "PYTHONIOENCODING=utf-8"
 chcp 65001 >nul

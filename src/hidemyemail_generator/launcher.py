@@ -5,8 +5,12 @@ import sys
 from pathlib import Path
 
 
-REGION = os.environ.get("ICLOUD_REGION", "china")
+REGION = os.environ.get("HIDEMYEMAIL_REGION", "global")
 COOKIE_FILE = "cookies.txt"
+
+
+def icloud_origin() -> str:
+    return "https://www.icloud.com.cn" if REGION == "china" else "https://www.icloud.com"
 
 
 def configure_console() -> None:
@@ -63,9 +67,10 @@ def open_notepad(path: str) -> None:
 
 
 def show_cookie_help() -> None:
+    origin = icloud_origin()
     print()
-    print("将打开 iCloud 中国页面和 cookies.txt。")
-    print("This opens iCloud China and cookies.txt.")
+    print("将打开 iCloud 页面和 cookies.txt。")
+    print("This opens iCloud and cookies.txt.")
     print("现有 cookies.txt 不会被自动清空。")
     print("Existing cookies.txt will not be cleared automatically.")
     print("如需替换，请在记事本中按 Ctrl+A，粘贴新的 cURL 内容，然后保存。")
@@ -74,7 +79,7 @@ def show_cookie_help() -> None:
     print("A backup will be saved as cookies.txt.bak before Notepad opens.")
     print()
     print("浏览器操作步骤 / Steps in your browser:")
-    print("1. 登录 https://www.icloud.com.cn/settings/")
+    print(f"1. 登录 {origin}/settings/")
     print("2. 按 F12")
     print("3. 点击 Network / 网络")
     print("4. 刷新页面")
@@ -91,7 +96,7 @@ def show_cookie_help() -> None:
     if cookie_path.exists() and cookie_path.stat().st_size > 0:
         shutil.copy2(cookie_path, f"{COOKIE_FILE}.bak")
     cookie_path.touch(exist_ok=True)
-    open_url("https://www.icloud.com.cn/settings/")
+    open_url(f"{origin}/settings/")
     open_notepad(COOKIE_FILE)
 
 
