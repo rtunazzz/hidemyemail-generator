@@ -20,6 +20,11 @@ license = { text = "MIT" }
 [project.scripts]
 hidemyemail = "hidemyemail_generator.main:cli"
 
+[project.optional-dependencies]
+capture = [
+    "playwright>=1.56.0",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

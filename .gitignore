@@ -1,9 +1,17 @@
 **/__pycache__
 venv/
 .venv/
+.cookie-browser-profile/
 build/
 dist/
 emails.txt
+hidemyemail.db
+hidemyemail.db-*
+inbox_config.json
+exports/
 cookie.txt
+cookies.txt
+cookies.txt.bak
+icloud_cookies.txt
 **/.DS_Store
 *.spec

@@ -1,1 +1,1 @@
-from .main import HideMyEmail
+from .hidemyemail import HideMyEmail as HideMyEmail
