@@ -15,6 +15,23 @@ from rich.console import Console
 from rich.table import Table
 
 from hidemyemail_generator.hidemyemail import HideMyEmail
+from hidemyemail_generator.inbox import (
+    ADDRESS_STATES,
+    DEFAULT_DB_FILE,
+    DEFAULT_FOLDER,
+    DEFAULT_INBOX_CONFIG_FILE,
+    InboxConfig,
+    connect_db,
+    export_csv_files,
+    list_addresses,
+    list_messages,
+    load_config,
+    mark_address,
+    mask_account,
+    save_config,
+    sync_inbox,
+    upsert_address,
+)
 
 
 MAX_CONCURRENT_TASKS = 10
@@ -349,6 +366,19 @@ def cli():
     type=REGION_CHOICE,
     help="iCloud region to use",
 )
+@click.option(
+    "--db-file",
+    default=DEFAULT_DB_FILE,
+    show_default=True,
+    help="Local inbox database file",
+    type=click.Path(),
+)
+@click.option(
+    "--no-db",
+    is_flag=True,
+    default=False,
+    help="Do not save generated addresses to the local inbox database",
+)
 def generatecommand(
     count: int,
     label: str,
@@ -356,10 +386,16 @@ def generatecommand(
     output: str,
     no_output_file: bool,
     region: str,
+    db_file: str,
+    no_db: bool,
 ):
     "Generate emails"
     try:
-        asyncio.run(_generate(label, count, cookie_file, output, no_output_file, region))
+        asyncio.run(
+            _generate(
+                label, count, cookie_file, output, no_output_file, region, db_file, no_db
+            )
+        )
     except KeyboardInterrupt:
         pass
 
@@ -443,6 +479,283 @@ def capturecookiecommand(cookie_file: str, region: str):
         raise click.ClickException("Could not capture the iCloud cookie")
 
 
+@click.group(name="inbox")
+def inboxgroup():
+    "Local inbox, verification code, and address state management"
+    pass
+
+
+@inboxgroup.command(name="setup")
+@click.option("--host", help="IMAP host, for example imap.gmail.com")
+@click.option("--port", default=993, show_default=True, type=int, help="IMAP port")
+@click.option("--username", help="IMAP username")
+@click.option("--password", help="IMAP password or app password")
+@click.option("--folder", default=DEFAULT_FOLDER, show_default=True, help="IMAP folder")
+@click.option("--ssl/--no-ssl", "use_ssl", default=True, show_default=True)
+@click.option(
+    "--config-file",
+    default=DEFAULT_INBOX_CONFIG_FILE,
+    show_default=True,
+    type=click.Path(),
+)
+@click.option(
+    "--db-file",
+    default=DEFAULT_DB_FILE,
+    show_default=True,
+    type=click.Path(),
+)
+def inbox_setup(
+    host: Optional[str],
+    port: int,
+    username: Optional[str],
+    password: Optional[str],
+    folder: str,
+    use_ssl: bool,
+    config_file: str,
+    db_file: str,
+):
+    "Configure the local IMAP inbox"
+    host = host or click.prompt("IMAP host")
+    username = username or click.prompt("IMAP username")
+    password = password or click.prompt("IMAP password/app password", hide_input=True)
+    config = InboxConfig(
+        host=host,
+        port=port,
+        username=username,
+        password=password,
+        folder=folder,
+        use_ssl=use_ssl,
+    )
+    save_config(config, config_file)
+    connect_db(db_file).close()
+    console = Console()
+    console.log(f'[bold green][OK][/] Saved inbox config to "{config_file}"')
+    console.log(f"[dim]Account: {mask_account(username)} | Folder: {folder}[/]")
+
+
+@inboxgroup.command(name="status")
+@click.option(
+    "--config-file",
+    default=DEFAULT_INBOX_CONFIG_FILE,
+    show_default=True,
+    type=click.Path(),
+)
+@click.option(
+    "--db-file",
+    default=DEFAULT_DB_FILE,
+    show_default=True,
+    type=click.Path(),
+)
+def inbox_status(config_file: str, db_file: str):
+    "Show local inbox configuration and database counts"
+    console = Console()
+    try:
+        config = load_config(config_file)
+    except FileNotFoundError as e:
+        raise click.ClickException(str(e)) from e
+
+    conn = connect_db(db_file)
+    try:
+        counts = {
+            "addresses": conn.execute("SELECT COUNT(*) FROM addresses").fetchone()[0],
+            "messages": conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0],
+            "codes": conn.execute(
+                "SELECT COUNT(*) FROM messages WHERE code IS NOT NULL AND code != ''"
+            ).fetchone()[0],
+        }
+    finally:
+        conn.close()
+
+    table = Table(title="Local Inbox")
+    table.add_column("Field")
+    table.add_column("Value")
+    table.add_row("IMAP host", f"{config.host}:{config.port}")
+    table.add_row("Account", mask_account(config.username))
+    table.add_row("Folder", config.folder)
+    table.add_row("SSL", str(config.use_ssl))
+    table.add_row("Addresses", str(counts["addresses"]))
+    table.add_row("Messages", str(counts["messages"]))
+    table.add_row("Codes", str(counts["codes"]))
+    console.print(table)
+
+
+@inboxgroup.command(name="sync")
+@click.option(
+    "--config-file",
+    default=DEFAULT_INBOX_CONFIG_FILE,
+    show_default=True,
+    type=click.Path(),
+)
+@click.option(
+    "--db-file",
+    default=DEFAULT_DB_FILE,
+    show_default=True,
+    type=click.Path(),
+)
+@click.option("--limit", default=50, show_default=True, type=int)
+@click.option("--show-codes", is_flag=True, default=False)
+def inbox_sync(config_file: str, db_file: str, limit: int, show_codes: bool):
+    "Fetch new inbox messages through IMAP"
+    console = Console()
+    try:
+        config = load_config(config_file)
+        inserted = sync_inbox(config, db_file=db_file, limit=limit)
+    except Exception as e:
+        raise click.ClickException(str(e)) from e
+
+    console.log(f"[bold green][OK][/] Synced {len(inserted)} new message(s)")
+    if inserted:
+        table = Table(title="New Messages")
+        table.add_column("Received")
+        table.add_column("HME")
+        table.add_column("Subject")
+        table.add_column("Code")
+        for row in inserted[:20]:
+            table.add_row(
+                row.get("received_at") or "",
+                row.get("hme_address") or "",
+                row.get("subject") or "",
+                row.get("code") or "",
+            )
+        console.print(table)
+
+    if show_codes:
+        _print_messages(db_file, only_codes=True, limit=20)
+
+
+@inboxgroup.command(name="codes")
+@click.option(
+    "--db-file",
+    default=DEFAULT_DB_FILE,
+    show_default=True,
+    type=click.Path(),
+)
+@click.option("--limit", default=20, show_default=True, type=int)
+def inbox_codes(db_file: str, limit: int):
+    "Show recent messages with verification codes"
+    _print_messages(db_file, only_codes=True, limit=limit)
+
+
+@inboxgroup.command(name="messages")
+@click.option(
+    "--db-file",
+    default=DEFAULT_DB_FILE,
+    show_default=True,
+    type=click.Path(),
+)
+@click.option("--limit", default=20, show_default=True, type=int)
+def inbox_messages(db_file: str, limit: int):
+    "Show recent inbox messages"
+    _print_messages(db_file, only_codes=False, limit=limit)
+
+
+@inboxgroup.command(name="addresses")
+@click.option(
+    "--state",
+    type=click.Choice(ADDRESS_STATES),
+    help="Filter by local address state",
+)
+@click.option(
+    "--db-file",
+    default=DEFAULT_DB_FILE,
+    show_default=True,
+    type=click.Path(),
+)
+@click.option("--limit", default=50, show_default=True, type=int)
+def inbox_addresses(state: Optional[str], db_file: str, limit: int):
+    "List local Hide My Email addresses"
+    conn = connect_db(db_file)
+    try:
+        rows = list_addresses(conn, state=state, limit=limit)
+    finally:
+        conn.close()
+
+    table = Table(title="Local Addresses")
+    table.add_column("Email")
+    table.add_column("Label")
+    table.add_column("State")
+    table.add_column("Source")
+    table.add_column("Updated")
+    for row in rows:
+        table.add_row(
+            row["email"],
+            row["label"] or "",
+            row["state"],
+            row["source"],
+            row["updated_at"],
+        )
+    Console().print(table)
+
+
+@inboxgroup.command(name="mark")
+@click.argument("email")
+@click.argument("state", type=click.Choice(ADDRESS_STATES))
+@click.option(
+    "--db-file",
+    default=DEFAULT_DB_FILE,
+    show_default=True,
+    type=click.Path(),
+)
+def inbox_mark(email: str, state: str, db_file: str):
+    "Mark an address as unused, used, or trash"
+    conn = connect_db(db_file)
+    try:
+        mark_address(conn, email, state)
+    finally:
+        conn.close()
+    Console().log(f'[bold green][OK][/] Marked "{email}" as {state}')
+
+
+@inboxgroup.command(name="export")
+@click.option(
+    "--db-file",
+    default=DEFAULT_DB_FILE,
+    show_default=True,
+    type=click.Path(),
+)
+@click.option(
+    "--export-dir",
+    default="exports",
+    show_default=True,
+    type=click.Path(),
+)
+def inbox_export(db_file: str, export_dir: str):
+    "Export local addresses and messages to CSV"
+    outputs = export_csv_files(db_file=db_file, export_dir=export_dir)
+    console = Console()
+    for name, path in outputs.items():
+        console.log(f"[bold green][OK][/] Exported {name}: {path}")
+
+
+@inboxgroup.command(name="sync-hme")
+@click.option(
+    "--cookie-file",
+    default=DEFAULT_COOKIE_FILENAME,
+    show_default=True,
+    type=click.Path(),
+)
+@click.option(
+    "--region",
+    default=DEFAULT_REGION,
+    show_default=True,
+    type=REGION_CHOICE,
+    help="iCloud region to use",
+)
+@click.option(
+    "--db-file",
+    default=DEFAULT_DB_FILE,
+    show_default=True,
+    type=click.Path(),
+)
+def inbox_sync_hme(cookie_file: str, region: str, db_file: str):
+    "Sync existing iCloud Hide My Email addresses into the local database"
+    try:
+        count = asyncio.run(_sync_hme_to_db(cookie_file, region, db_file))
+    except KeyboardInterrupt:
+        return
+    Console().log(f"[bold green][OK][/] Synced {count} Hide My Email address(es)")
+
+
 async def _generate(
     label: str,
     count: int,
@@ -450,6 +763,8 @@ async def _generate(
     output_file: str,
     no_output_file: bool = False,
     region: str = DEFAULT_REGION,
+    db_file: str = DEFAULT_DB_FILE,
+    no_db: bool = False,
 ) -> None:
     async with RichHideMyEmail(
         cookie_file=cookie_file,
@@ -457,7 +772,22 @@ async def _generate(
         no_output_file=no_output_file,
         region=region,
     ) as hme:
-        await hme.generate(label, count)
+        emails = await hme.generate(label, count)
+
+    if emails and not no_db:
+        conn = connect_db(db_file)
+        try:
+            for email in emails:
+                upsert_address(
+                    conn,
+                    email,
+                    label=label,
+                    state="unused",
+                    source="generated",
+                    note="Generated by hidemyemail",
+                )
+        finally:
+            conn.close()
 
 
 async def _list(
@@ -509,6 +839,65 @@ async def _whoami(cookie_file: str, region: str = DEFAULT_REGION) -> bool:
     )
     console.print(table)
     return True
+
+
+def _print_messages(db_file: str, only_codes: bool, limit: int) -> None:
+    conn = connect_db(db_file)
+    try:
+        rows = list_messages(conn, only_codes=only_codes, limit=limit)
+    finally:
+        conn.close()
+
+    table = Table(title="Verification Codes" if only_codes else "Inbox Messages")
+    table.add_column("Received")
+    table.add_column("HME")
+    table.add_column("Sender")
+    table.add_column("Subject")
+    table.add_column("Code")
+    for row in rows:
+        table.add_row(
+            row["received_at"] or "",
+            row["hme_address"] or "",
+            row["sender"] or "",
+            row["subject"] or "",
+            row["code"] or "",
+        )
+    Console().print(table)
+
+
+async def _sync_hme_to_db(
+    cookie_file: str, region: str = DEFAULT_REGION, db_file: str = DEFAULT_DB_FILE
+) -> int:
+    async with RichHideMyEmail(cookie_file=cookie_file, region=region) as hme:
+        result = await hme.list_email()
+
+    if not result or not result.get("success"):
+        error = result.get("error", {}) if result else {}
+        if isinstance(error, dict):
+            reason = error.get("errorMessage") or str(error)
+        else:
+            reason = result.get("reason", "Unknown") if result else "Unknown"
+        raise click.ClickException(f"Failed to sync Hide My Email addresses: {reason}")
+
+    conn = connect_db(db_file)
+    try:
+        count = 0
+        for row in result.get("result", {}).get("hmeEmails", []):
+            email = row.get("hme")
+            if not email:
+                continue
+            upsert_address(
+                conn,
+                email,
+                label=row.get("label") or "",
+                state="unused" if row.get("isActive") else "trash",
+                source="icloud",
+                note=f"iCloud active={row.get('isActive')}",
+            )
+            count += 1
+        return count
+    finally:
+        conn.close()
 
 
 async def _capture_cookie(cookie_file: str, region: str = DEFAULT_REGION) -> bool:
@@ -624,6 +1013,7 @@ cli.add_command(listcommand, name="list")
 cli.add_command(generatecommand, name="generate")
 cli.add_command(whoamicommand, name="whoami")
 cli.add_command(capturecookiecommand, name="capture-cookie")
+cli.add_command(inboxgroup)
 
 if __name__ == "__main__":
     cli()

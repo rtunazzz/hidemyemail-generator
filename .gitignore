@@ -5,6 +5,10 @@ venv/
 build/
 dist/
 emails.txt
+hidemyemail.db
+hidemyemail.db-*
+inbox_config.json
+exports/
 cookie.txt
 cookies.txt
 cookies.txt.bak

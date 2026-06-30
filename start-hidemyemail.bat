@@ -34,15 +34,17 @@ echo 1. Generate emails
 echo 2. List active emails
 echo 3. List inactive emails
 echo 4. Manage iCloud cookie
-echo 5. Exit
+echo 5. Local inbox and codes
+echo 6. Exit
 echo.
-set /p choice="Choose an option [1-5]: "
+set /p choice="Choose an option [1-6]: "
 
 if "%choice%"=="1" goto generate
 if "%choice%"=="2" goto list_active
 if "%choice%"=="3" goto list_inactive
 if "%choice%"=="4" goto cookie_menu
-if "%choice%"=="5" goto end
+if "%choice%"=="5" goto inbox_menu
+if "%choice%"=="6" goto end
 goto menu
 
 :generate
@@ -130,6 +132,117 @@ if errorlevel 1 echo [ERROR] Auto cookie capture failed.
 echo.
 pause
 goto cookie_menu
+
+:inbox_menu
+cls
+echo Local Inbox and Codes
+echo.
+echo 1. Configure inbox IMAP account
+echo 2. Sync inbox and show verification codes
+echo 3. Show recent verification codes
+echo 4. Show recent inbox messages
+echo 5. List unused local emails
+echo 6. Mark email as used
+echo 7. Move email to trash
+echo 8. Sync iCloud HME addresses to local DB
+echo 9. Export CSV files
+echo 10. Back
+echo.
+set /p inbox_choice="Choose an option [1-10]: "
+
+if "%inbox_choice%"=="1" goto inbox_setup
+if "%inbox_choice%"=="2" goto inbox_sync
+if "%inbox_choice%"=="3" goto inbox_codes
+if "%inbox_choice%"=="4" goto inbox_messages
+if "%inbox_choice%"=="5" goto inbox_unused
+if "%inbox_choice%"=="6" goto inbox_mark_used
+if "%inbox_choice%"=="7" goto inbox_mark_trash
+if "%inbox_choice%"=="8" goto inbox_sync_hme
+if "%inbox_choice%"=="9" goto inbox_export
+if "%inbox_choice%"=="10" goto menu
+goto inbox_menu
+
+:inbox_setup
+echo.
+echo Configure your receiving mailbox IMAP account.
+echo For many providers, use an app password instead of the normal login password.
+echo The config is saved locally in inbox_config.json.
+echo.
+uv run hidemyemail inbox setup
+if errorlevel 1 echo [ERROR] Inbox setup failed.
+echo.
+pause
+goto inbox_menu
+
+:inbox_sync
+echo.
+uv run hidemyemail inbox sync --limit 100 --show-codes
+if errorlevel 1 echo [ERROR] Inbox sync failed.
+echo.
+pause
+goto inbox_menu
+
+:inbox_codes
+echo.
+uv run hidemyemail inbox codes --limit 30
+if errorlevel 1 echo [ERROR] Could not show codes.
+echo.
+pause
+goto inbox_menu
+
+:inbox_messages
+echo.
+uv run hidemyemail inbox messages --limit 30
+if errorlevel 1 echo [ERROR] Could not show messages.
+echo.
+pause
+goto inbox_menu
+
+:inbox_unused
+echo.
+uv run hidemyemail inbox addresses --state unused --limit 100
+if errorlevel 1 echo [ERROR] Could not show local emails.
+echo.
+pause
+goto inbox_menu
+
+:inbox_mark_used
+echo.
+set /p mark_email="Email to mark as used: "
+if "%mark_email%"=="" goto inbox_menu
+uv run hidemyemail inbox mark "%mark_email%" used
+if errorlevel 1 echo [ERROR] Could not mark email.
+echo.
+pause
+goto inbox_menu
+
+:inbox_mark_trash
+echo.
+set /p mark_email="Email to move to trash: "
+if "%mark_email%"=="" goto inbox_menu
+uv run hidemyemail inbox mark "%mark_email%" trash
+if errorlevel 1 echo [ERROR] Could not mark email.
+echo.
+pause
+goto inbox_menu
+
+:inbox_sync_hme
+call :ensure_cookies
+if errorlevel 1 goto inbox_menu
+echo.
+uv run hidemyemail inbox sync-hme --cookie-file cookies.txt --region %ICLOUD_REGION%
+if errorlevel 1 echo [ERROR] Could not sync iCloud HME addresses.
+echo.
+pause
+goto inbox_menu
+
+:inbox_export
+echo.
+uv run hidemyemail inbox export
+if errorlevel 1 echo [ERROR] Export failed.
+echo.
+pause
+goto inbox_menu
 
 :end
 endlocal
