@@ -213,11 +213,11 @@ class RichHideMyEmail(HideMyEmail):
 
         if not os.path.exists(cookie_file):
             self.console.log(
-                f'[bold yellow][WARN][/] No "{cookie_file}" file found! Generation might not work due to unauthorized access.'
+                f'[bold yellow][WARN][/] No "{cookie_file}" file found! 未找到 Cookie 文件，可能无法授权访问。'
             )
         elif "X-APPLE-WEBAUTH-USER" not in self.cookies:
             self.console.log(
-                "[bold yellow][WARN][/] Cookie is missing X-APPLE-WEBAUTH-USER. Copy a logged-in iCloud settings request, preferably maildomainws or hme, not feedbackws/reportStats."
+                "[bold yellow][WARN][/] Cookie is missing X-APPLE-WEBAUTH-USER. Cookie 缺少授权字段；请复制已登录的 iCloud 请求，优先 maildomainws 或 hme，不要用 feedbackws/reportStats。"
             )
 
     def _check_response(
@@ -234,7 +234,7 @@ class RichHideMyEmail(HideMyEmail):
                 err_msg = error["errorMessage"]
             email_prefix = f' "{email}"' if email else ""
             self.console.log(
-                f"[bold red][ERR][/]{email_prefix} - Failed to {action}. Reason: {err_msg}"
+                f"[bold red][ERR][/]{email_prefix} - Failed to {action}. 失败原因: {err_msg}"
             )
             return False
         return True
@@ -247,7 +247,7 @@ class RichHideMyEmail(HideMyEmail):
             return
 
         email = gen_res["result"]["hme"]
-        self.console.log(f'[50%] "{email}" - Successfully generated')
+        self.console.log(f'[50%] "{email}" - Successfully generated / 生成成功')
 
         # Then, reserve it
         reserve_res = await self.reserve_email(email, label, DEFAULT_HME_NOTE)
@@ -255,7 +255,7 @@ class RichHideMyEmail(HideMyEmail):
         if not self._check_response(reserve_res, "reserve email", email):
             return
 
-        self.console.log(f'[100%] "{email}" - Successfully reserved')
+        self.console.log(f'[100%] "{email}" - Successfully reserved / 保留成功')
         return email
 
     async def _generate(self, label: str, num: int):
@@ -271,9 +271,9 @@ class RichHideMyEmail(HideMyEmail):
             emails = []
             self.console.rule()
             if count < 1:
-                self.console.log("Count should be >= 1")
+                self.console.log("Count should be >= 1 / 数量必须大于等于 1")
                 return emails
-            self.console.log(f"Generating {count} email(s)...")
+            self.console.log(f"Generating {count} email(s)... / 正在生成 {count} 个邮箱...")
             self.console.rule()
 
             with self.console.status("[bold green]Generating iCloud email(s)..."):
@@ -292,13 +292,13 @@ class RichHideMyEmail(HideMyEmail):
 
                     self.console.rule()
                     self.console.log(
-                        f':star: Emails have been saved into the "{self._output_file}" file'
+                        f':star: Emails have been saved into "{self._output_file}" / 邮箱已保存'
                     )
                 else:
                     self.console.rule()
 
                 self.console.log(
-                    f"[bold green]All done![/] Successfully generated [bold green]{len(emails)}[/] email(s)"
+                    f"[bold green]All done![/] Successfully generated [bold green]{len(emails)}[/] email(s) / 已生成 [bold green]{len(emails)}[/] 个邮箱"
                 )
 
             return emails
@@ -310,10 +310,10 @@ class RichHideMyEmail(HideMyEmail):
         if not self._check_response(gen_res, "list emails"):
             return
 
-        self.table.add_column("Label")
-        self.table.add_column("Hide My Email")
-        self.table.add_column("Created At")
-        self.table.add_column("Is Active")
+        self.table.add_column("Label / 标签")
+        self.table.add_column("Hide My Email / 隐藏邮箱")
+        self.table.add_column("Created At / 创建时间")
+        self.table.add_column("Is Active / 使用中")
 
         for row in gen_res["result"]["hmeEmails"]:
             if row["isActive"] == active and (
@@ -335,49 +335,49 @@ def cli():
 
 
 @click.command()
-@click.option("--count", default=1, help="How many emails to generate", type=int)
+@click.option("--count", default=1, help="How many emails to generate / 生成数量", type=int)
 @click.option(
     "--label",
     required=True,
-    help="Label to set for generated emails",
+    help="Label to set for generated emails / 生成邮箱的标签",
 )
 @click.option(
     "--cookie-file",
     default=DEFAULT_COOKIE_FILENAME,
-    help="Path to cookie file",
+    help="Path to cookie file / Cookie 文件路径",
     type=click.Path(),
 )
 @click.option(
     "--output",
     default=DEFAULT_EMAIL_FILENAME,
-    help="Path to output file for saving emails",
+    help="Path to output file for saving emails / 邮箱输出文件路径",
     type=click.Path(),
 )
 @click.option(
     "--no-output-file",
     is_flag=True,
     default=False,
-    help="Do not save emails to an output file",
+    help="Do not save emails to an output file / 不保存到输出文件",
 )
 @click.option(
     "--region",
     default=DEFAULT_REGION,
     show_default=True,
     type=REGION_CHOICE,
-    help="iCloud region to use",
+    help="iCloud region to use / iCloud 区域",
 )
 @click.option(
     "--db-file",
     default=DEFAULT_DB_FILE,
     show_default=True,
-    help="Local inbox database file",
+    help="Local inbox database file / 本地收件台数据库",
     type=click.Path(),
 )
 @click.option(
     "--no-db",
     is_flag=True,
     default=False,
-    help="Do not save generated addresses to the local inbox database",
+    help="Do not save generated addresses to the local inbox database / 不写入本地数据库",
 )
 def generatecommand(
     count: int,
@@ -389,7 +389,7 @@ def generatecommand(
     db_file: str,
     no_db: bool,
 ):
-    "Generate emails"
+    "Generate emails / 生成隐藏邮箱"
     try:
         asyncio.run(
             _generate(
@@ -403,15 +403,15 @@ def generatecommand(
 @click.command()
 @click.option(
     "--label-query",
-    help='Query to search within the "Label" field',
+    help='Query to search within the "Label" field / 按标签搜索',
 )
 @click.option(
-    "--active/--inactive", default=True, help="Filter Active / Inactive emails"
+    "--active/--inactive", default=True, help="Filter Active / Inactive emails / 筛选使用中或已停用地址"
 )
 @click.option(
     "--cookie-file",
     default=DEFAULT_COOKIE_FILENAME,
-    help="Path to cookie file",
+    help="Path to cookie file / Cookie 文件路径",
     type=click.Path(),
 )
 @click.option(
@@ -419,10 +419,10 @@ def generatecommand(
     default=DEFAULT_REGION,
     show_default=True,
     type=REGION_CHOICE,
-    help="iCloud region to use",
+    help="iCloud region to use / iCloud 区域",
 )
 def listcommand(label_query: Optional[str], active: bool, cookie_file: str, region: str):
-    "List emails"
+    "List emails / 查看隐藏邮箱"
     try:
         asyncio.run(_list(label_query, active, cookie_file, region))
     except KeyboardInterrupt:
@@ -433,7 +433,7 @@ def listcommand(label_query: Optional[str], active: bool, cookie_file: str, regi
 @click.option(
     "--cookie-file",
     default=DEFAULT_COOKIE_FILENAME,
-    help="Path to cookie file",
+    help="Path to cookie file / Cookie 文件路径",
     type=click.Path(),
 )
 @click.option(
@@ -441,10 +441,10 @@ def listcommand(label_query: Optional[str], active: bool, cookie_file: str, regi
     default=DEFAULT_REGION,
     show_default=True,
     type=REGION_CHOICE,
-    help="iCloud region to use",
+    help="iCloud region to use / iCloud 区域",
 )
 def whoamicommand(cookie_file: str, region: str):
-    "Show the account represented by the saved cookie"
+    "Show the account represented by the saved cookie / 查看当前 Cookie 对应账号"
     try:
         ok = asyncio.run(_whoami(cookie_file, region))
     except KeyboardInterrupt:
@@ -458,7 +458,7 @@ def whoamicommand(cookie_file: str, region: str):
 @click.option(
     "--cookie-file",
     default=DEFAULT_COOKIE_FILENAME,
-    help="Path to cookie file",
+    help="Path to cookie file / Cookie 文件路径",
     type=click.Path(),
 )
 @click.option(
@@ -466,10 +466,10 @@ def whoamicommand(cookie_file: str, region: str):
     default=DEFAULT_REGION,
     show_default=True,
     type=REGION_CHOICE,
-    help="iCloud region to use",
+    help="iCloud region to use / iCloud 区域",
 )
 def capturecookiecommand(cookie_file: str, region: str):
-    "Open iCloud Plus and capture the Hide My Email request cookie"
+    "Open iCloud Plus and capture the Hide My Email request cookie / 自动捕获 iCloud Cookie"
     try:
         ok = asyncio.run(_capture_cookie(cookie_file, region))
     except KeyboardInterrupt:
@@ -481,16 +481,16 @@ def capturecookiecommand(cookie_file: str, region: str):
 
 @click.group(name="inbox")
 def inboxgroup():
-    "Local inbox, verification code, and address state management"
+    "Local inbox, verification code, and address state management / 本地收件台、验证码和地址状态管理"
     pass
 
 
 @inboxgroup.command(name="setup")
-@click.option("--host", help="IMAP host, for example imap.gmail.com")
-@click.option("--port", default=993, show_default=True, type=int, help="IMAP port")
-@click.option("--username", help="IMAP username")
-@click.option("--password", help="IMAP password or app password")
-@click.option("--folder", default=DEFAULT_FOLDER, show_default=True, help="IMAP folder")
+@click.option("--host", help="IMAP host, for example imap.gmail.com / IMAP 主机")
+@click.option("--port", default=993, show_default=True, type=int, help="IMAP port / IMAP 端口")
+@click.option("--username", help="IMAP username / IMAP 用户名")
+@click.option("--password", help="IMAP password or app password / IMAP 密码或应用专用密码")
+@click.option("--folder", default=DEFAULT_FOLDER, show_default=True, help="IMAP folder / IMAP 文件夹")
 @click.option("--ssl/--no-ssl", "use_ssl", default=True, show_default=True)
 @click.option(
     "--config-file",
@@ -514,10 +514,10 @@ def inbox_setup(
     config_file: str,
     db_file: str,
 ):
-    "Configure the local IMAP inbox"
-    host = host or click.prompt("IMAP host")
-    username = username or click.prompt("IMAP username")
-    password = password or click.prompt("IMAP password/app password", hide_input=True)
+    "Configure the local IMAP inbox / 配置本地 IMAP 收件台"
+    host = host or click.prompt("IMAP host / IMAP 主机")
+    username = username or click.prompt("IMAP username / IMAP 用户名")
+    password = password or click.prompt("IMAP password/app password / IMAP 密码或应用专用密码", hide_input=True)
     config = InboxConfig(
         host=host,
         port=port,
@@ -529,8 +529,8 @@ def inbox_setup(
     save_config(config, config_file)
     connect_db(db_file).close()
     console = Console()
-    console.log(f'[bold green][OK][/] Saved inbox config to "{config_file}"')
-    console.log(f"[dim]Account: {mask_account(username)} | Folder: {folder}[/]")
+    console.log(f'[bold green][OK][/] Saved inbox config to "{config_file}" / 已保存收件台配置')
+    console.log(f"[dim]Account / 账号: {mask_account(username)} | Folder / 文件夹: {folder}[/]")
 
 
 @inboxgroup.command(name="status")
@@ -547,7 +547,7 @@ def inbox_setup(
     type=click.Path(),
 )
 def inbox_status(config_file: str, db_file: str):
-    "Show local inbox configuration and database counts"
+    "Show local inbox configuration and database counts / 查看本地收件台状态"
     console = Console()
     try:
         config = load_config(config_file)
@@ -566,16 +566,16 @@ def inbox_status(config_file: str, db_file: str):
     finally:
         conn.close()
 
-    table = Table(title="Local Inbox")
-    table.add_column("Field")
-    table.add_column("Value")
-    table.add_row("IMAP host", f"{config.host}:{config.port}")
-    table.add_row("Account", mask_account(config.username))
-    table.add_row("Folder", config.folder)
+    table = Table(title="Local Inbox / 本地收件台")
+    table.add_column("Field / 字段")
+    table.add_column("Value / 值")
+    table.add_row("IMAP host / IMAP 主机", f"{config.host}:{config.port}")
+    table.add_row("Account / 账号", mask_account(config.username))
+    table.add_row("Folder / 文件夹", config.folder)
     table.add_row("SSL", str(config.use_ssl))
-    table.add_row("Addresses", str(counts["addresses"]))
-    table.add_row("Messages", str(counts["messages"]))
-    table.add_row("Codes", str(counts["codes"]))
+    table.add_row("Addresses / 地址", str(counts["addresses"]))
+    table.add_row("Messages / 邮件", str(counts["messages"]))
+    table.add_row("Codes / 验证码", str(counts["codes"]))
     console.print(table)
 
 
@@ -595,7 +595,7 @@ def inbox_status(config_file: str, db_file: str):
 @click.option("--limit", default=50, show_default=True, type=int)
 @click.option("--show-codes", is_flag=True, default=False)
 def inbox_sync(config_file: str, db_file: str, limit: int, show_codes: bool):
-    "Fetch new inbox messages through IMAP"
+    "Fetch new inbox messages through IMAP / 通过 IMAP 同步新邮件"
     console = Console()
     try:
         config = load_config(config_file)
@@ -603,13 +603,13 @@ def inbox_sync(config_file: str, db_file: str, limit: int, show_codes: bool):
     except Exception as e:
         raise click.ClickException(str(e)) from e
 
-    console.log(f"[bold green][OK][/] Synced {len(inserted)} new message(s)")
+    console.log(f"[bold green][OK][/] Synced {len(inserted)} new message(s) / 已同步 {len(inserted)} 封新邮件")
     if inserted:
-        table = Table(title="New Messages")
-        table.add_column("Received")
-        table.add_column("HME")
-        table.add_column("Subject")
-        table.add_column("Code")
+        table = Table(title="New Messages / 新邮件")
+        table.add_column("Received / 收件时间")
+        table.add_column("HME / 隐藏邮箱")
+        table.add_column("Subject / 标题")
+        table.add_column("Code / 验证码")
         for row in inserted[:20]:
             table.add_row(
                 row.get("received_at") or "",
@@ -632,7 +632,7 @@ def inbox_sync(config_file: str, db_file: str, limit: int, show_codes: bool):
 )
 @click.option("--limit", default=20, show_default=True, type=int)
 def inbox_codes(db_file: str, limit: int):
-    "Show recent messages with verification codes"
+    "Show recent messages with verification codes / 查看最近验证码邮件"
     _print_messages(db_file, only_codes=True, limit=limit)
 
 
@@ -645,7 +645,7 @@ def inbox_codes(db_file: str, limit: int):
 )
 @click.option("--limit", default=20, show_default=True, type=int)
 def inbox_messages(db_file: str, limit: int):
-    "Show recent inbox messages"
+    "Show recent inbox messages / 查看最近收件"
     _print_messages(db_file, only_codes=False, limit=limit)
 
 
@@ -653,7 +653,7 @@ def inbox_messages(db_file: str, limit: int):
 @click.option(
     "--state",
     type=click.Choice(ADDRESS_STATES),
-    help="Filter by local address state",
+    help="Filter by local address state / 按本地地址状态筛选",
 )
 @click.option(
     "--db-file",
@@ -663,19 +663,19 @@ def inbox_messages(db_file: str, limit: int):
 )
 @click.option("--limit", default=50, show_default=True, type=int)
 def inbox_addresses(state: Optional[str], db_file: str, limit: int):
-    "List local Hide My Email addresses"
+    "List local Hide My Email addresses / 查看本地隐藏邮箱地址"
     conn = connect_db(db_file)
     try:
         rows = list_addresses(conn, state=state, limit=limit)
     finally:
         conn.close()
 
-    table = Table(title="Local Addresses")
-    table.add_column("Email")
-    table.add_column("Label")
-    table.add_column("State")
-    table.add_column("Source")
-    table.add_column("Updated")
+    table = Table(title="Local Addresses / 本地地址")
+    table.add_column("Email / 邮箱")
+    table.add_column("Label / 标签")
+    table.add_column("State / 状态")
+    table.add_column("Source / 来源")
+    table.add_column("Updated / 更新时间")
     for row in rows:
         table.add_row(
             row["email"],
@@ -697,13 +697,13 @@ def inbox_addresses(state: Optional[str], db_file: str, limit: int):
     type=click.Path(),
 )
 def inbox_mark(email: str, state: str, db_file: str):
-    "Mark an address as unused, used, or trash"
+    "Mark an address as unused, used, or trash / 标记地址状态"
     conn = connect_db(db_file)
     try:
         mark_address(conn, email, state)
     finally:
         conn.close()
-    Console().log(f'[bold green][OK][/] Marked "{email}" as {state}')
+    Console().log(f'[bold green][OK][/] Marked "{email}" as {state} / 已标记地址状态')
 
 
 @inboxgroup.command(name="export")
@@ -720,11 +720,11 @@ def inbox_mark(email: str, state: str, db_file: str):
     type=click.Path(),
 )
 def inbox_export(db_file: str, export_dir: str):
-    "Export local addresses and messages to CSV"
+    "Export local addresses and messages to CSV / 导出本地地址和邮件 CSV"
     outputs = export_csv_files(db_file=db_file, export_dir=export_dir)
     console = Console()
     for name, path in outputs.items():
-        console.log(f"[bold green][OK][/] Exported {name}: {path}")
+        console.log(f"[bold green][OK][/] Exported {name}: {path} / 已导出")
 
 
 @inboxgroup.command(name="sync-hme")
@@ -739,7 +739,7 @@ def inbox_export(db_file: str, export_dir: str):
     default=DEFAULT_REGION,
     show_default=True,
     type=REGION_CHOICE,
-    help="iCloud region to use",
+    help="iCloud region to use / iCloud 区域",
 )
 @click.option(
     "--db-file",
@@ -748,12 +748,12 @@ def inbox_export(db_file: str, export_dir: str):
     type=click.Path(),
 )
 def inbox_sync_hme(cookie_file: str, region: str, db_file: str):
-    "Sync existing iCloud Hide My Email addresses into the local database"
+    "Sync existing iCloud Hide My Email addresses into the local database / 同步已有 iCloud 隐藏邮箱到本地库"
     try:
         count = asyncio.run(_sync_hme_to_db(cookie_file, region, db_file))
     except KeyboardInterrupt:
         return
-    Console().log(f"[bold green][OK][/] Synced {count} Hide My Email address(es)")
+    Console().log(f"[bold green][OK][/] Synced {count} Hide My Email address(es) / 已同步 {count} 个隐藏邮箱")
 
 
 async def _generate(
@@ -818,19 +818,19 @@ async def _whoami(cookie_file: str, region: str = DEFAULT_REGION) -> bool:
     webservices = account.get("webservices", {})
     maildomain = webservices.get("maildomainws", {})
 
-    table = Table(title="Current iCloud Cookie", show_header=False)
-    table.add_column("Field")
-    table.add_column("Value")
+    table = Table(title="Current iCloud Cookie / 当前 iCloud Cookie", show_header=False)
+    table.add_column("Field / 字段")
+    table.add_column("Value / 值")
     table.add_row("Apple ID", ds_info.get("appleId") or "Unknown")
-    table.add_row("Name", full_name or "Unknown")
+    table.add_row("Name / 名称", full_name or "Unknown")
     table.add_row("DSID", str(ds_info.get("dsid") or "Unknown"))
     table.add_row(
-        "Hide My Email",
+        "Hide My Email / 隐藏邮箱",
         "Available"
         if ds_info.get("isHideMyEmailFeatureAvailable")
         else "Unavailable or unknown",
     )
-    table.add_row("User Partition", str(account.get("userPartition") or "Unknown"))
+    table.add_row("User Partition / 用户分区", str(account.get("userPartition") or "Unknown"))
     table.add_row(
         "Maildomain",
         account.get("detectedMaildomainHost")
@@ -848,12 +848,12 @@ def _print_messages(db_file: str, only_codes: bool, limit: int) -> None:
     finally:
         conn.close()
 
-    table = Table(title="Verification Codes" if only_codes else "Inbox Messages")
-    table.add_column("Received")
-    table.add_column("HME")
-    table.add_column("Sender")
-    table.add_column("Subject")
-    table.add_column("Code")
+    table = Table(title="Verification Codes / 验证码" if only_codes else "Inbox Messages / 收件箱")
+    table.add_column("Received / 收件时间")
+    table.add_column("HME / 隐藏邮箱")
+    table.add_column("Sender / 发件人")
+    table.add_column("Subject / 标题")
+    table.add_column("Code / 验证码")
     for row in rows:
         table.add_row(
             row["received_at"] or "",
@@ -959,7 +959,7 @@ async def _capture_cookie(cookie_file: str, region: str = DEFAULT_REGION) -> boo
         context.on("request", on_request)
 
         console.print(
-            "A browser window opened. Log in if needed; the tool will click Hide My Email and capture the request."
+            "A browser window opened. Log in if needed; the tool will click Hide My Email and capture the request. / 已打开浏览器；如需登录请先登录，工具会点击隐藏邮件地址并捕获请求。"
         )
         await page.goto(COOKIE_CAPTURE_URLS[region], wait_until="domcontentloaded")
 
@@ -989,7 +989,7 @@ async def _capture_cookie(cookie_file: str, region: str = DEFAULT_REGION) -> boo
         if not captured.done():
             await context.close()
             console.log(
-                "[bold red][ERR][/] Timed out waiting for the Hide My Email app request"
+                "[bold red][ERR][/] Timed out waiting for the Hide My Email app request / 等待隐藏邮件地址应用请求超时"
             )
             return False
 
@@ -1004,7 +1004,7 @@ async def _capture_cookie(cookie_file: str, region: str = DEFAULT_REGION) -> boo
         write_captured_cookie(cookie_file, cookie, region, request_url, maildomain_host)
         await context.close()
 
-    console.log(f'[bold green][OK][/] Captured and saved cookie to "{cookie_file}"')
+    console.log(f'[bold green][OK][/] Captured and saved cookie to "{cookie_file}" / 已捕获并保存 Cookie')
     await _whoami(cookie_file, region)
     return True
 
