@@ -21,12 +21,14 @@ DEFAULT_FOLDER = "INBOX"
 
 ADDRESS_STATES = ("unused", "used", "trash")
 CODE_KEYWORDS = re.compile(
-    r"验证码|校验码|动态码|安全码|验证|verification|verify|code|otp|passcode|security",
+    r"验证码|校验码|动态码|安全码|认证码|确认码|临时码|一次性|验证|verification|verify|code|otp|passcode|security code|confirmation",
     re.IGNORECASE,
 )
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 DIGIT_CODE_RE = re.compile(r"(?<!\d)\d{4,8}(?!\d)")
-ALNUM_CODE_RE = re.compile(r"\b(?=[A-Z0-9]{6,10}\b)(?=.*\d)[A-Z0-9]{6,10}\b")
+ALNUM_CODE_RE = re.compile(
+    r"\b(?=[A-Z0-9]{6,10}\b)(?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*\d)[A-Z0-9]{6,10}\b"
+)
 TAG_RE = re.compile(r"<[^>]+>")
 
 
@@ -264,15 +266,16 @@ def extract_verification_code(subject: str, body: str) -> str:
             code = match.group(0)
             start, end = match.span()
             window = text[max(0, start - 80) : min(len(text), end + 80)]
+            if not CODE_KEYWORDS.search(window):
+                continue
+            if re.fullmatch(r"(?:19|20)\d{2}", code):
+                continue
             score = base_score
-            if CODE_KEYWORDS.search(window):
-                score += 100
+            score += 100
             if len(code) == 6:
                 score += 20
             if len(code) in (4, 5, 7, 8):
                 score += 5
-            if re.match(r"20\d{2}$", code):
-                score -= 40
             candidates.append((score, code))
 
     if not candidates:
