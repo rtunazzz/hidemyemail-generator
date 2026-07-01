@@ -271,7 +271,6 @@ def extract_verification_code(subject: str, body: str) -> str:
             if re.fullmatch(r"(?:19|20)\d{2}", code):
                 continue
             score = base_score
-            score += 100
             if len(code) == 6:
                 score += 20
             if len(code) in (4, 5, 7, 8):

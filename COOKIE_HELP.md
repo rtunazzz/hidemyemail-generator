@@ -1,6 +1,7 @@
-# iCloud China Cookie Setup
+# iCloud Cookie Setup
 
-1. Open `https://www.icloud.com.cn/settings/` and log in.
+1. Open `https://www.icloud.com/settings/` and log in
+   (use `https://www.icloud.com.cn/settings/` for iCloud China).
 2. Press `F12`.
 3. Open the `Network` tab.
 4. Refresh the page.

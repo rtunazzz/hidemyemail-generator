@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 
-REGION = os.environ.get("HIDEMYEMAIL_REGION", "global")
+REGION = os.environ.get("HIDEMYEMAIL_REGION", "global").lower()
 COOKIE_FILE = "cookies.txt"
 
 
@@ -26,7 +26,7 @@ def clear() -> None:
 
 
 def pause() -> None:
-    input("\n按 Enter 继续 / Press Enter to continue...")
+    input("\nPress Enter to continue / 按 Enter 继续...")
 
 
 def run_cli(*args: str) -> int:
@@ -42,11 +42,11 @@ def has_cookies() -> bool:
 def ensure_cookies() -> bool:
     if has_cookies():
         return True
-    print("[INFO] cookies.txt 不存在或为空 / cookies.txt is missing or empty.")
+    print("[INFO] cookies.txt is missing or empty / cookies.txt 不存在或为空.")
     show_cookie_help()
     if has_cookies():
         return True
-    print("[ERROR] cookies.txt 仍然为空 / cookies.txt is still empty.")
+    print("[ERROR] cookies.txt is still empty / cookies.txt 仍然为空.")
     pause()
     return False
 
@@ -69,27 +69,29 @@ def open_notepad(path: str) -> None:
 def show_cookie_help() -> None:
     origin = icloud_origin()
     print()
-    print("将打开 iCloud 页面和 cookies.txt。")
     print("This opens iCloud and cookies.txt.")
-    print("现有 cookies.txt 不会被自动清空。")
+    print("将打开 iCloud 页面和 cookies.txt。")
     print("Existing cookies.txt will not be cleared automatically.")
-    print("如需替换，请在记事本中按 Ctrl+A，粘贴新的 cURL 内容，然后保存。")
+    print("现有 cookies.txt 不会被自动清空。")
     print("To replace it, press Ctrl+A in Notepad, paste the new cURL text, then save.")
-    print("打开记事本前会备份为 cookies.txt.bak。")
+    print("如需替换，请在记事本中按 Ctrl+A，粘贴新的 cURL 内容，然后保存。")
     print("A backup will be saved as cookies.txt.bak before Notepad opens.")
+    print("打开记事本前会备份为 cookies.txt.bak。")
     print()
-    print("浏览器操作步骤 / Steps in your browser:")
-    print(f"1. 登录 {origin}/settings/")
-    print("2. 按 F12")
-    print("3. 点击 Network / 网络")
-    print("4. 刷新页面")
-    print("5. 在过滤框搜索 hme 或 maildomainws")
-    print("6. 如果看到 maildomainws 或 hme 请求，右键它")
-    print("   如果只有其他请求，选择已登录状态下的设置页请求")
-    print("   不要使用 feedbackws/reportStats，因为它通常缺少授权 Cookie")
-    print("7. 点击 Copy / 复制，然后 Copy as cURL / 复制为 cURL")
-    print("8. 将整段内容粘贴到 cookies.txt")
-    print("9. 保存并关闭记事本")
+    print("Steps in your browser / 浏览器操作步骤:")
+    print(f"1. Sign in to {origin}/settings/ / 登录")
+    print("2. Press F12 / 按 F12")
+    print("3. Open the Network tab / 点击 Network 网络")
+    print("4. Refresh the page / 刷新页面")
+    print("5. Search hme or maildomainws in the filter box / 在过滤框搜索 hme 或 maildomainws")
+    print("6. Right-click a maildomainws or hme request if one appears;")
+    print("   otherwise pick a signed-in settings request.")
+    print("   Avoid feedbackws/reportStats; it usually misses the auth cookie.")
+    print("   如果看到 maildomainws 或 hme 请求，右键它；否则选择已登录状态下的设置页请求。")
+    print("   不要使用 feedbackws/reportStats，因为它通常缺少授权 Cookie。")
+    print("7. Choose Copy, then Copy as cURL / 点击 Copy 复制，然后 Copy as cURL 复制为 cURL")
+    print("8. Paste the whole text into cookies.txt / 将整段内容粘贴到 cookies.txt")
+    print("9. Save and close Notepad / 保存并关闭记事本")
     print()
 
     cookie_path = Path(COOKIE_FILE)
@@ -105,14 +107,14 @@ def main_menu() -> None:
         clear()
         print("HideMyEmail Generator / iCloud 隐藏邮箱工具")
         print()
-        print("1. 生成隐藏邮箱 / Generate emails")
-        print("2. 查看使用中地址 / List active emails")
-        print("3. 查看已停用地址 / List inactive emails")
-        print("4. 管理 iCloud Cookie / Manage iCloud cookie")
-        print("5. 本地收件台和验证码 / Local inbox and codes")
-        print("6. 退出 / Exit")
+        print("1. Generate emails / 生成隐藏邮箱")
+        print("2. List active emails / 查看使用中地址")
+        print("3. List inactive emails / 查看已停用地址")
+        print("4. Manage iCloud cookie / 管理 iCloud Cookie")
+        print("5. Local inbox and codes / 本地收件台和验证码")
+        print("6. Exit / 退出")
         print()
-        choice = input("请选择 / Choose an option [1-6]: ").strip()
+        choice = input("Choose an option / 请选择 [1-6]: ").strip()
 
         if choice == "1":
             generate()
@@ -132,8 +134,8 @@ def generate() -> None:
     if not ensure_cookies():
         return
     print()
-    label = input("标签 / Label for generated emails: ").strip() or "generated"
-    count = input("生成数量 / How many emails to generate [1]: ").strip() or "1"
+    label = input("Label for generated emails / 标签: ").strip() or "generated"
+    count = input("How many emails to generate / 生成数量 [1]: ").strip() or "1"
     code = run_cli(
         "generate",
         "--label",
@@ -148,7 +150,7 @@ def generate() -> None:
         REGION,
     )
     if code:
-        print("[ERROR] 生成失败 / Generate command failed.")
+        print("[ERROR] Generate command failed / 生成失败.")
     pause()
 
 
@@ -157,7 +159,7 @@ def list_active() -> None:
         return
     code = run_cli("list", "--active", "--cookie-file", COOKIE_FILE, "--region", REGION)
     if code:
-        print("[ERROR] 查看使用中地址失败 / List active command failed.")
+        print("[ERROR] List active command failed / 查看使用中地址失败.")
     pause()
 
 
@@ -166,21 +168,21 @@ def list_inactive() -> None:
         return
     code = run_cli("list", "--inactive", "--cookie-file", COOKIE_FILE, "--region", REGION)
     if code:
-        print("[ERROR] 查看已停用地址失败 / List inactive command failed.")
+        print("[ERROR] List inactive command failed / 查看已停用地址失败.")
     pause()
 
 
 def cookie_menu() -> None:
     while True:
         clear()
-        print("iCloud Cookie 管理 / iCloud Cookie")
+        print("iCloud Cookie / iCloud Cookie 管理")
         print()
-        print("1. 查看当前 Cookie 账号 / Show current cookie account")
-        print("2. 手动替换 iCloud Cookie / Replace iCloud cookie")
-        print("3. 自动获取 iCloud Cookie / Auto capture iCloud cookie")
-        print("4. 返回 / Back")
+        print("1. Show current cookie account / 查看当前 Cookie 账号")
+        print("2. Replace iCloud cookie / 手动替换 iCloud Cookie")
+        print("3. Auto capture iCloud cookie / 自动获取 iCloud Cookie")
+        print("4. Back / 返回")
         print()
-        choice = input("请选择 / Choose an option [1-4]: ").strip()
+        choice = input("Choose an option / 请选择 [1-4]: ").strip()
 
         if choice == "1":
             show_cookie_account()
@@ -195,48 +197,48 @@ def cookie_menu() -> None:
 
 def show_cookie_account() -> None:
     if not has_cookies():
-        print("[INFO] cookies.txt 不存在或为空 / cookies.txt is missing or empty.")
-        print("请使用选项 2 添加 iCloud Cookie / Use option 2 to add an iCloud cookie.")
+        print("[INFO] cookies.txt is missing or empty / cookies.txt 不存在或为空.")
+        print("Use option 2 to add an iCloud cookie / 请使用选项 2 添加 iCloud Cookie.")
         pause()
         return
     code = run_cli("whoami", "--cookie-file", COOKIE_FILE, "--region", REGION)
     if code:
-        print("[ERROR] 无法识别当前 Cookie 账号 / Could not identify current cookie account.")
+        print("[ERROR] Could not identify current cookie account / 无法识别当前 Cookie 账号.")
     pause()
 
 
 def auto_capture_cookies() -> None:
     print()
-    print("将打开一个独立浏览器配置用于获取 Cookie。")
     print("This opens a separate browser profile for cookie capture.")
-    print("如需登录，请在浏览器中登录。工具会打开 iCloud+，点击隐藏邮件地址，")
-    print("捕获应用请求并保存 cookies.txt。")
+    print("将打开一个独立浏览器配置用于获取 Cookie。")
     print("Log in if needed. The tool will open iCloud Plus, click Hide My Email,")
     print("capture the Hide My Email app request, and save cookies.txt.")
+    print("如需登录请在浏览器中登录。工具会打开 iCloud+，点击隐藏邮件地址，")
+    print("捕获应用请求并保存 cookies.txt。")
     print()
     code = run_cli("capture-cookie", "--cookie-file", COOKIE_FILE, "--region", REGION)
     if code:
-        print("[ERROR] 自动获取 Cookie 失败 / Auto cookie capture failed.")
+        print("[ERROR] Auto cookie capture failed / 自动获取 Cookie 失败.")
     pause()
 
 
 def inbox_menu() -> None:
     while True:
         clear()
-        print("本地收件台和验证码 / Local Inbox and Codes")
+        print("Local Inbox and Codes / 本地收件台和验证码")
         print()
-        print("1. 配置收件邮箱 IMAP / Configure inbox IMAP account")
-        print("2. 同步收件箱并显示验证码 / Sync inbox and show verification codes")
-        print("3. 查看最近验证码 / Show recent verification codes")
-        print("4. 查看最近邮件 / Show recent inbox messages")
-        print("5. 查看未使用本地邮箱 / List unused local emails")
-        print("6. 标记邮箱为已使用 / Mark email as used")
-        print("7. 移入垃圾箱 / Move email to trash")
-        print("8. 同步 iCloud 隐藏邮箱到本地库 / Sync iCloud HME addresses to local DB")
-        print("9. 导出 CSV 表格 / Export CSV files")
-        print("10. 返回 / Back")
+        print("1. Configure inbox IMAP account / 配置收件邮箱 IMAP")
+        print("2. Sync inbox and show verification codes / 同步收件箱并显示验证码")
+        print("3. Show recent verification codes / 查看最近验证码")
+        print("4. Show recent inbox messages / 查看最近邮件")
+        print("5. List unused local emails / 查看未使用本地邮箱")
+        print("6. Mark email as used / 标记邮箱为已使用")
+        print("7. Move email to trash / 移入垃圾箱")
+        print("8. Sync iCloud HME addresses to local DB / 同步 iCloud 隐藏邮箱到本地库")
+        print("9. Export CSV files / 导出 CSV 表格")
+        print("10. Back / 返回")
         print()
-        choice = input("请选择 / Choose an option [1-10]: ").strip()
+        choice = input("Choose an option / 请选择 [1-10]: ").strip()
 
         if choice == "1":
             inbox_setup()
@@ -262,59 +264,59 @@ def inbox_menu() -> None:
 
 def inbox_setup() -> None:
     print()
-    print("配置用于接收转发邮件的邮箱 IMAP 账号。")
     print("Configure your receiving mailbox IMAP account.")
-    print("很多邮箱需要使用“应用专用密码”，不要用网页登录密码。")
-    print("For many providers, use an app password instead of the normal login password.")
-    print("配置会保存在本地 inbox_config.json。")
+    print("配置用于接收转发邮件的邮箱 IMAP 账号。")
+    print("For many providers, use an app password instead of the login password.")
+    print("很多邮箱需要使用应用专用密码，不要用网页登录密码。")
     print("The config is saved locally in inbox_config.json.")
+    print("配置会保存在本地 inbox_config.json。")
     print()
     code = run_cli("inbox", "setup")
     if code:
-        print("[ERROR] 收件台配置失败 / Inbox setup failed.")
+        print("[ERROR] Inbox setup failed / 收件台配置失败.")
     pause()
 
 
 def inbox_sync() -> None:
     code = run_cli("inbox", "sync", "--limit", "100", "--show-codes")
     if code:
-        print("[ERROR] 收件箱同步失败 / Inbox sync failed.")
+        print("[ERROR] Inbox sync failed / 收件箱同步失败.")
     pause()
 
 
 def inbox_codes() -> None:
     code = run_cli("inbox", "codes", "--limit", "30")
     if code:
-        print("[ERROR] 无法显示验证码 / Could not show codes.")
+        print("[ERROR] Could not show codes / 无法显示验证码.")
     pause()
 
 
 def inbox_messages() -> None:
     code = run_cli("inbox", "messages", "--limit", "30")
     if code:
-        print("[ERROR] 无法显示邮件 / Could not show messages.")
+        print("[ERROR] Could not show messages / 无法显示邮件.")
     pause()
 
 
 def inbox_unused() -> None:
     code = run_cli("inbox", "addresses", "--state", "unused", "--limit", "100")
     if code:
-        print("[ERROR] 无法显示本地邮箱 / Could not show local emails.")
+        print("[ERROR] Could not show local emails / 无法显示本地邮箱.")
     pause()
 
 
 def inbox_mark(state: str) -> None:
     prompt = (
-        "要标记为已使用的邮箱 / Email to mark as used: "
+        "Email to mark as used / 要标记为已使用的邮箱: "
         if state == "used"
-        else "要移入垃圾箱的邮箱 / Email to move to trash: "
+        else "Email to move to trash / 要移入垃圾箱的邮箱: "
     )
     email = input(prompt).strip()
     if not email:
         return
     code = run_cli("inbox", "mark", email, state)
     if code:
-        print("[ERROR] 无法标记邮箱 / Could not mark email.")
+        print("[ERROR] Could not mark email / 无法标记邮箱.")
     pause()
 
 
@@ -323,14 +325,14 @@ def inbox_sync_hme() -> None:
         return
     code = run_cli("inbox", "sync-hme", "--cookie-file", COOKIE_FILE, "--region", REGION)
     if code:
-        print("[ERROR] 无法同步 iCloud 隐藏邮箱 / Could not sync iCloud HME addresses.")
+        print("[ERROR] Could not sync iCloud HME addresses / 无法同步 iCloud 隐藏邮箱.")
     pause()
 
 
 def inbox_export() -> None:
     code = run_cli("inbox", "export")
     if code:
-        print("[ERROR] 导出失败 / Export failed.")
+        print("[ERROR] Export failed / 导出失败.")
     pause()
 
 
