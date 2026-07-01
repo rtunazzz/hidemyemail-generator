@@ -51,6 +51,10 @@ COOKIE_CAPTURE_URLS = {
 HIDEMYEMAIL_APP_PATH = "/applications/hidemyemail/current/"
 
 
+def maildomain_suffix(region: str) -> str:
+    return "com.cn" if region == "china" else "com"
+
+
 def load_cookie_context(cookie_file: str, region: str) -> tuple[str, str]:
     with open(cookie_file, "r") as f:
         content = "\n".join(
@@ -83,8 +87,9 @@ def load_cookie_context(cookie_file: str, region: str) -> tuple[str, str]:
         r"https://(p\d+)-[^/\s'\"]+\.icloud\.com(?:\.cn)?", normalized_content
     )
     if shard:
-        suffix = "com.cn" if region == "china" else "com"
-        maildomain_host = f"{shard.group(1)}-maildomainws.icloud.{suffix}"
+        maildomain_host = (
+            f"{shard.group(1)}-maildomainws.icloud.{maildomain_suffix(region)}"
+        )
 
     cmd_cookie_arg = re.search(
         r"(?:^|\s)(?:-b|--cookie)\s+\^\"(.+?)\^\"\s+\^?\s*-[A-Za-z]",
@@ -118,10 +123,6 @@ def load_cookie_context(cookie_file: str, region: str) -> tuple[str, str]:
 
     lines = normalized_content.splitlines()
     return (lines[0].strip() if lines else ""), maildomain_host
-
-
-def load_cookie_string(cookie_file: str) -> str:
-    return load_cookie_context(cookie_file, DEFAULT_REGION)[0]
 
 
 async def fetch_account_info(cookie_file: str, region: str) -> dict:
@@ -163,8 +164,9 @@ async def fetch_account_info_from_cookie(
 
     user_partition = data.get("userPartition")
     if not maildomain_host and user_partition:
-        suffix = "com.cn" if region == "china" else "com"
-        maildomain_host = f"p{user_partition}-maildomainws.icloud.{suffix}"
+        maildomain_host = (
+            f"p{user_partition}-maildomainws.icloud.{maildomain_suffix(region)}"
+        )
 
     data["detectedMaildomainHost"] = maildomain_host
     return data
