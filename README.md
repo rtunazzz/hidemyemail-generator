@@ -78,6 +78,17 @@ Alongside the basics it provides:
 
 ## Quick Start
 
+### Download a prebuilt binary
+
+Grab a standalone binary from the [latest release](https://github.com/rtunazzz/hidemyemail-generator/releases/latest) — no Python or `uv` required.
+
+- **Windows:** download `hidemyemail-windows.exe`. Double-click it to open the interactive menu, or run it from a terminal with arguments for CLI usage (`hidemyemail-windows.exe --help`).
+- **macOS:** download `hidemyemail-macos`, then `chmod +x hidemyemail-macos`. Run with no arguments to open the menu, or pass arguments for the CLI. The binary is unsigned, so the first launch is blocked by Gatekeeper — right-click it in Finder and choose **Open** to allow it.
+
+The prebuilt binaries use manual cookie capture; automatic capture (Playwright) is only available when running from source.
+
+### Run from source
+
 ```bash
 git clone https://github.com/rtunazzz/hidemyemail-generator.git
 cd hidemyemail-generator
