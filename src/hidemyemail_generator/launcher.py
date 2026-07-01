@@ -30,7 +30,10 @@ def pause() -> None:
 
 
 def run_cli(*args: str) -> int:
-    command = [sys.executable, "-m", "hidemyemail_generator.main", *args]
+    if getattr(sys, "frozen", False):
+        command = [sys.executable, *args]
+    else:
+        command = [sys.executable, "-m", "hidemyemail_generator.main", *args]
     return subprocess.run(command).returncode
 
 
@@ -179,7 +182,10 @@ def cookie_menu() -> None:
         print()
         print("1. Show current cookie account / 查看当前 Cookie 账号")
         print("2. Replace iCloud cookie / 手动替换 iCloud Cookie")
-        print("3. Auto capture iCloud cookie / 自动获取 iCloud Cookie")
+        auto_capture_label = "3. Auto capture iCloud cookie / 自动获取 iCloud Cookie"
+        if getattr(sys, "frozen", False):
+            auto_capture_label += " (source only / 仅源码可用)"
+        print(auto_capture_label)
         print("4. Back / 返回")
         print()
         choice = input("Choose an option / 请选择 [1-4]: ").strip()

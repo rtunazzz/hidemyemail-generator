@@ -56,6 +56,17 @@
 
 ## 快速开始
 
+### 下载预构建二进制
+
+从[最新发行版](https://github.com/rtunazzz/hidemyemail-generator/releases/latest)下载独立二进制文件，无需安装 Python 或 `uv`。
+
+- **Windows：** 下载 `hidemyemail-windows.exe`。双击打开交互式菜单，或在终端中带参数运行以使用命令行（`hidemyemail-windows.exe --help`）。
+- **macOS：** 下载 `hidemyemail-macos`，然后执行 `chmod +x hidemyemail-macos`。不带参数运行会打开菜单，带参数则进入命令行。该二进制未签名，首次启动会被 Gatekeeper 拦截——在访达中右键点击并选择**打开**即可放行。
+
+预构建二进制使用手动获取 Cookie；自动获取（Playwright）仅在源码运行时可用。
+
+### 源码运行
+
 ```bash
 git clone https://github.com/rtunazzz/hidemyemail-generator.git
 cd hidemyemail-generator

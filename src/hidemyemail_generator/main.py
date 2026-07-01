@@ -3,6 +3,7 @@ import base64
 import datetime
 import os
 import shutil
+import sys
 from typing import Union, List, Optional
 import re
 import ssl
@@ -908,9 +909,16 @@ async def _capture_cookie(cookie_file: str, region: str = DEFAULT_REGION) -> boo
     try:
         from playwright.async_api import async_playwright
     except ImportError:
-        console.log(
-            "[bold red][ERR][/] Playwright is not installed. Run: uv sync --extra capture"
-        )
+        if getattr(sys, "frozen", False):
+            console.log(
+                "[bold red][ERR][/] Auto capture is not available in the prebuilt binary. "
+                "Run from source (uv sync --extra capture) or use manual cookie capture. / "
+                "预构建二进制不支持自动获取，请使用源码运行或手动获取 Cookie。"
+            )
+        else:
+            console.log(
+                "[bold red][ERR][/] Playwright is not installed. Run: uv sync --extra capture"
+            )
         return False
 
     profile_dir = Path(".cookie-browser-profile").resolve()

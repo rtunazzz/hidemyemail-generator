@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows
+            binary: dist/hidemyemail-windows.exe
+          - os: macos-latest
+            name: macos
+            binary: dist/hidemyemail-macos
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Build binary
+        shell: bash
+        run: |
+          if [ "${{ matrix.name }}" = "windows" ]; then
+            uv run --with pyinstaller pyinstaller --onefile \
+              --name hidemyemail-windows \
+              --collect-data certifi \
+              --icon docs/icon.ico \
+              src/hidemyemail_generator/__main__.py
+          else
+            uv run --with pyinstaller pyinstaller --onefile \
+              --name hidemyemail-macos \
+              --collect-data certifi \
+              src/hidemyemail_generator/__main__.py
+          fi
+
+      - name: Attach binary to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.binary }}
