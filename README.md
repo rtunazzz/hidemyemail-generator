@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="64%" src="docs/header.png" alt="HideMyEmail Generator">
+  <img width="180" src="docs/app-icon.png" alt="HideMyEmail Generator app icon">
 </p>
 
 <h1 align="center">HideMyEmail Generator</h1>
