@@ -117,8 +117,8 @@ The app requires macOS 13 or newer. It bundles the CLI helper, so Python and
 
 1. Open the app and choose **Connect iCloud**.
 2. Complete Apple's system account prompt or fallback sign-in form. The iCloud
-   landing page stays hidden; no Hide My Email page navigation is required.
-   The window closes automatically when the session validates.
+   session is captured from the authenticated Hide My Email request before its
+   page loads. The window closes automatically when the session validates.
 3. Use **Generate** for one address, or use **Scheduler** to create one address
    at a configurable interval until a target is reached.
 
@@ -139,6 +139,10 @@ To build the unsigned app from source:
 ```bash
 scripts/build-macos-app.sh "$(uname -m)"
 ```
+
+Run this after every change to the Swift app. It removes and regenerates the
+matching app under `build/` and its ZIP and DMG under `dist/`, so those folders
+never continue to serve an older UI.
 
 The script builds one exact architecture and refuses cross-architecture
 packaging. Run it on Apple Silicon for the Apple Silicon app and on an Intel

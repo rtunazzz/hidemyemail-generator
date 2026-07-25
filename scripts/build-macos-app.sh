@@ -28,6 +28,7 @@ ZIP="$ASSET_BASE.zip"
 DMG="$ASSET_BASE.dmg"
 
 rm -rf "$BUILD_ROOT"
+rm -f "$ZIP" "$DMG"
 mkdir -p "$BUILD_ROOT/pyinstaller" "$ROOT/dist"
 
 cd "$ROOT"
@@ -72,13 +73,29 @@ for binary in \
   fi
 done
 
-rm -f "$ZIP" "$DMG"
+for artifact in \
+  "$APP" \
+  "$APP/Contents/MacOS/HideMyEmailGenerator" \
+  "$APP/Contents/Resources/hidemyemail"; do
+  if codesign -dvv "$artifact" 2>&1 | grep -Eq '^(TeamIdentifier=[A-Z0-9]|Authority=)'; then
+    echo "Refusing to package an Apple-team-signed artifact: $artifact" >&2
+    exit 1
+  fi
+done
+
 COPYFILE_DISABLE=1 ditto -c -k --keepParent --norsrc --noextattr --noqtn --noacl "$APP" "$ZIP"
 hdiutil create \
   -volname "HideMyEmail Generator" \
   -srcfolder "$APP" \
   -format UDZO \
   "$DMG"
+
+if [[ -n "${CODESIGN_IDENTITY:-}" ]]; then
+  codesign --force --timestamp=none --sign "$CODESIGN_IDENTITY" \
+    "$APP/Contents/Resources/hidemyemail"
+  codesign --force --options runtime --timestamp=none --sign "$CODESIGN_IDENTITY" "$APP"
+  codesign --verify --deep --strict "$APP"
+fi
 
 echo "App: $APP"
 echo "ZIP: $ZIP"

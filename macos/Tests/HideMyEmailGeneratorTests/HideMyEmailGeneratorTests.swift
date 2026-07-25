@@ -68,6 +68,51 @@ final class HideMyEmailGeneratorTests: XCTestCase {
     XCTAssertNil(ICloudCookieHeader.make(from: [decoy], region: .global))
   }
 
+  func testCookieCaptureAcceptsExactHideMyEmailRequests() throws {
+    for (region, url) in [
+      (ICloudRegion.global, "https://www.icloud.com/applications/hidemyemail/current/?rootDomain=www"),
+      (ICloudRegion.china, "https://www.icloud.com.cn/applications/hidemyemail/current/?rootDomain=www"),
+    ] {
+      var request = URLRequest(url: try XCTUnwrap(URL(string: url)))
+      request.setValue(
+        "other=value; X-APPLE-WEBAUTH-USER=user",
+        forHTTPHeaderField: "Cookie"
+      )
+
+      XCTAssertEqual(
+        ICloudCookieHeader.make(from: request, region: region),
+        "other=value; X-APPLE-WEBAUTH-USER=user"
+      )
+    }
+  }
+
+  func testCookieCaptureRejectsWrongHideMyEmailRequest() throws {
+    for url in [
+      "https://evilicloud.com/applications/hidemyemail/current/?rootDomain=www",
+      "https://www.icloud.com/icloudplus/?rootDomain=www",
+      "https://www.icloud.com/applications/hidemyemail/current/",
+      "https://www.icloud.com/applications/hidemyemail/current/?rootDomain=other",
+    ] {
+      var request = URLRequest(url: try XCTUnwrap(URL(string: url)))
+      request.setValue("X-APPLE-WEBAUTH-USER=user", forHTTPHeaderField: "Cookie")
+
+      XCTAssertNil(ICloudCookieHeader.make(from: request, region: .global))
+    }
+  }
+
+  func testCookieCaptureRejectsRequestWithoutAppleUserCookie() throws {
+    var request = URLRequest(
+      url: try XCTUnwrap(
+        URL(
+          string: "https://www.icloud.com/applications/hidemyemail/current/?rootDomain=www"
+        )
+      )
+    )
+    request.setValue("other=value", forHTTPHeaderField: "Cookie")
+
+    XCTAssertNil(ICloudCookieHeader.make(from: request, region: .global))
+  }
+
   func testPrivateCookieFileUsesOwnerOnlyPermissions() throws {
     let directory = FileManager.default.temporaryDirectory
       .appendingPathComponent(UUID().uuidString, isDirectory: true)

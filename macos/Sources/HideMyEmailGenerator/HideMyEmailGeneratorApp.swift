@@ -11,7 +11,7 @@ struct HideMyEmailGeneratorApp: App {
         .environmentObject(model)
         .frame(minWidth: 640, minHeight: 420)
     }
-    .defaultSize(width: 760, height: 520)
+    .defaultSize(width: 850, height: 540)
     .windowToolbarStyle(.unified)
   }
 }
@@ -41,6 +41,7 @@ enum AppSection: String, CaseIterable, Identifiable {
 struct ContentView: View {
   @EnvironmentObject private var model: AppModel
   @State private var selection = AppSection.generate
+  @State private var isConfirmingSignOut = false
 
   var body: some View {
     NavigationSplitView {
@@ -52,9 +53,14 @@ struct ContentView: View {
         .listStyle(.sidebar)
 
         Divider()
-        Label("Local only · No telemetry", systemImage: "lock.shield")
+        Label {
+          Text("No telemetry collected")
+            .foregroundStyle(.secondary)
+        } icon: {
+          Image(systemName: "lock.shield.fill")
+            .foregroundStyle(.blue)
+        }
           .font(.caption)
-          .foregroundStyle(.secondary)
           .padding(12)
       }
       .navigationSplitViewColumnWidth(min: 160, ideal: 180, max: 220)
@@ -90,16 +96,37 @@ struct ContentView: View {
   private var accountToolbar: some ToolbarContent {
     ToolbarItem(placement: .primaryAction) {
       if let session = model.session {
-        Menu {
-          Button("Reconnect…") { model.reconnect() }
-          Divider()
-          Button("Sign Out", role: .destructive) { model.signOut() }
+        Button {
+          isConfirmingSignOut = true
         } label: {
-          Label(session.account.name, systemImage: "person.crop.circle.fill")
+          Image(systemName: "checkmark.icloud.fill")
+            .symbolRenderingMode(.palette)
+            .foregroundStyle(.white, Color(nsColor: .systemBlue))
+            .imageScale(.large)
+        }
+        .buttonStyle(.plain)
+        .help("Connected as \(session.account.name). Click to sign out.")
+        .accessibilityLabel("iCloud connected")
+        .confirmationDialog(
+          "Would you like to sign out?",
+          isPresented: $isConfirmingSignOut,
+          titleVisibility: .visible
+        ) {
+          Button("Sign Out", role: .destructive) { model.signOut() }
+          Button("Cancel", role: .cancel) {}
+        } message: {
+          Text("This removes the saved iCloud session cookie from this Mac.")
         }
       } else {
-        Button("Connect iCloud") { model.reconnect() }
-          .buttonStyle(.borderedProminent)
+        Button { model.reconnect() } label: {
+          Text("Connect iCloud")
+            .fontWeight(.semibold)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(.blue, in: Capsule())
+        }
+        .buttonStyle(.plain)
       }
     }
   }
@@ -113,34 +140,40 @@ struct GenerateView: View {
       VStack(alignment: .leading, spacing: 18) {
         DetailHeader(
           title: "Generate one address",
-          subtitle: "Create a Hide My Email address immediately."
+          subtitle: "Create a Hide My Email address immediately.",
+          systemImage: "wand.and.sparkles"
         )
 
-        GroupBox {
-          Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 12) {
-            GridRow {
-              Text("Label")
-                .foregroundStyle(.secondary)
-                .gridColumnAlignment(.trailing)
-              TextField("generated", text: $model.onDemandLabel)
-                .textFieldStyle(.roundedBorder)
-                .disabled(model.isBusy)
-                .frame(maxWidth: 420)
-            }
-          }
-          .padding(8)
-        }
+        VStack(alignment: .leading, spacing: 10) {
+          Text("EMAIL DETAILS")
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(.tertiary)
 
-        HStack {
+          LabeledContent("Label") {
+            TextField("generated", text: $model.onDemandLabel)
+              .textFieldStyle(.roundedBorder)
+              .disabled(model.isBusy)
+              .frame(maxWidth: 420)
+          }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .modernPanel()
+
+        HStack(spacing: 10) {
           Button("Generate Email") { model.generateOnDemand() }
-            .buttonStyle(.borderedProminent)
+            .modernPrimaryButton()
+            .tint(.blue)
             .controlSize(.large)
             .disabled(!model.canGenerateOnDemand)
             .keyboardShortcut(.return, modifiers: .command)
           if model.runKind == .onDemand, model.isBusy {
             Button("Stop", role: .destructive) { model.stopGeneration() }
+              .modernButton()
+              .controlSize(.large)
           }
         }
+        .frame(maxWidth: .infinity)
 
         if model.runKind == .onDemand {
           RunStatusView()
@@ -163,56 +196,67 @@ struct SchedulerView: View {
       VStack(alignment: .leading, spacing: 18) {
         DetailHeader(
           title: "Scheduled generation",
-          subtitle: "Create one address per interval until the target is complete."
+          subtitle: "Create one address per interval until the target is complete.",
+          systemImage: "calendar.badge.clock"
         )
 
-        GroupBox {
-          Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 14) {
-            GridRow {
-              Text("Label")
-                .foregroundStyle(.secondary)
-                .gridColumnAlignment(.trailing)
-              TextField("generated", text: $model.schedulerLabel)
-                .textFieldStyle(.roundedBorder)
-                .frame(maxWidth: 420)
-            }
-            GridRow {
-              Text("Target")
-                .foregroundStyle(.secondary)
-              Stepper(value: $model.schedulerTargetCount, in: 1...100) {
-                Text("\(model.schedulerTargetCount) emails")
-                  .monospacedDigit()
-              }
-            }
-            GridRow {
-              Text("Interval")
-                .foregroundStyle(.secondary)
-              Stepper(
-                value: $model.schedulerIntervalMinutes,
-                in: SchedulerPolicy.allowedMinutes
-              ) {
-                Text("\(model.schedulerIntervalMinutes) minutes")
-                  .monospacedDigit()
-              }
-            }
-          }
-          .disabled(model.isBusy)
-          .padding(8)
-        }
+        VStack(alignment: .leading, spacing: 14) {
+          Text("SCHEDULE DETAILS")
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(.tertiary)
 
-        HStack {
-          if model.runKind == .scheduler, model.isBusy {
-            Button("Stop Scheduler", role: .destructive) { model.stopGeneration() }
-          } else {
-            Button("Start Scheduler") { model.startScheduler() }
-              .buttonStyle(.borderedProminent)
-              .controlSize(.large)
-              .disabled(!model.canStartScheduler)
+          LabeledContent("Label") {
+            TextField("generated", text: $model.schedulerLabel)
+              .textFieldStyle(.roundedBorder)
+              .frame(maxWidth: 420)
           }
+          Divider()
+          LabeledContent("Target") {
+            Stepper(value: $model.schedulerTargetCount, in: 1...100) {
+              Text("\(model.schedulerTargetCount) emails")
+                .monospacedDigit()
+            }
+          }
+          Divider()
+          LabeledContent("Interval") {
+            Stepper(
+              value: $model.schedulerIntervalMinutes,
+              in: SchedulerPolicy.allowedMinutes
+            ) {
+              Text("\(model.schedulerIntervalMinutes) minutes")
+                .monospacedDigit()
+            }
+          }
+        }
+        .disabled(model.isBusy)
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .modernPanel()
+
+        VStack(spacing: 10) {
           Text("Keep the app open while the schedule runs.")
             .font(.caption)
             .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+
+          HStack {
+            if model.runKind == .scheduler, model.isBusy {
+              Button("Stop Scheduler", role: .destructive) { model.stopGeneration() }
+                .modernButton()
+                .controlSize(.large)
+            } else {
+              Button("Start Scheduler") { model.startScheduler() }
+                .modernPrimaryButton()
+                .tint(.blue)
+                .controlSize(.large)
+                .disabled(!model.canStartScheduler)
+            }
+          }
+          .frame(maxWidth: .infinity)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.top, -4)
 
         if model.runKind == .scheduler {
           RunStatusView()
@@ -295,13 +339,55 @@ struct EmailHistoryView: View {
 struct DetailHeader: View {
   let title: String
   let subtitle: String
+  let systemImage: String
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 4) {
-      Text(title)
-        .font(.title2.bold())
-      Text(subtitle)
-        .foregroundStyle(.secondary)
+    HStack(spacing: 12) {
+      Image(systemName: systemImage)
+        .font(.title2.weight(.semibold))
+        .foregroundStyle(.tint)
+        .frame(width: 40, height: 40)
+        .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+
+      VStack(alignment: .leading, spacing: 3) {
+        Text(title)
+          .font(.title2.bold())
+        Text(subtitle)
+          .foregroundStyle(.secondary)
+      }
+    }
+  }
+}
+
+extension View {
+  @ViewBuilder
+  func modernPanel() -> some View {
+    if #available(macOS 26.0, *) {
+      glassEffect(.regular.interactive(), in: .rect(cornerRadius: 18))
+    } else {
+      background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 18))
+        .overlay {
+          RoundedRectangle(cornerRadius: 18)
+            .stroke(.separator.opacity(0.5))
+        }
+    }
+  }
+
+  @ViewBuilder
+  func modernPrimaryButton() -> some View {
+    if #available(macOS 26.0, *) {
+      buttonStyle(.glassProminent)
+    } else {
+      buttonStyle(.borderedProminent)
+    }
+  }
+
+  @ViewBuilder
+  func modernButton() -> some View {
+    if #available(macOS 26.0, *) {
+      buttonStyle(.glass)
+    } else {
+      buttonStyle(.bordered)
     }
   }
 }
@@ -438,6 +524,7 @@ struct SignInSheet: View {
   @EnvironmentObject private var model: AppModel
   @Environment(\.dismiss) private var dismiss
   @State private var stage = ICloudSignInStage.opening
+  @State private var signInAttempt = UUID()
 
   var body: some View {
     VStack(spacing: 0) {
@@ -476,21 +563,39 @@ struct SignInSheet: View {
             model.connect(cookieHeader: cookieHeader, region: model.signInRegion)
           }
         )
-        .id(model.signInRegion)
+        .id("\(model.signInRegion.rawValue)-\(signInAttempt)")
 
         if stage != .authentication {
           ZStack {
             Color(nsColor: .windowBackgroundColor)
-            VStack(spacing: 12) {
-              ProgressView()
-                .controlSize(.large)
-              Text(
-                stage == .capturing
-                  ? "Finishing iCloud connection…" : "Opening Apple Account…"
-              )
-              .font(.headline)
-              Text("The iCloud website runs only in the background.")
-                .foregroundStyle(.secondary)
+            if stage == .failed || model.connectionError != nil {
+              VStack(spacing: 12) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                  .font(.title)
+                  .foregroundStyle(.orange)
+                Text("Couldn’t capture the iCloud session.")
+                  .font(.headline)
+                Text("Try Apple’s sign-in again or import a cookie file below.")
+                  .foregroundStyle(.secondary)
+                Button("Try Again") {
+                  model.reconnect()
+                  stage = .opening
+                  signInAttempt = UUID()
+                }
+                .buttonStyle(.borderedProminent)
+              }
+            } else {
+              VStack(spacing: 12) {
+                ProgressView()
+                  .controlSize(.large)
+                Text(
+                  stage == .capturing
+                    ? "Finishing iCloud connection…" : "Opening Apple Account…"
+                )
+                .font(.headline)
+                Text("The iCloud website runs only in the background.")
+                  .foregroundStyle(.secondary)
+              }
             }
           }
         }

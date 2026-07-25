@@ -509,6 +509,7 @@ final class AppModel: ObservableObject {
   }
 
   func connect(cookieHeader: String, region: ICloudRegion) {
+    iCloudSignInLog.notice("App model received captured session")
     let context = CLIClient.cookieContext(header: cookieHeader, region: region)
     validateAndSave(context: context, region: region)
   }
@@ -575,6 +576,7 @@ final class AppModel: ObservableObject {
 
   private func validateAndSave(context: String, region: ICloudRegion) {
     guard !isConnecting, let client else { return }
+    iCloudSignInLog.notice("Starting local CLI session validation")
     isConnecting = true
     connectionError = nil
 
@@ -583,6 +585,9 @@ final class AppModel: ObservableObject {
         let result = try await client.validate(
           cookieContext: context,
           region: region
+        )
+        iCloudSignInLog.notice(
+          "Local CLI validation completed; accepted: \(result.ok)"
         )
         guard result.ok, let account = result.account else {
           throw result.error
@@ -603,6 +608,7 @@ final class AppModel: ObservableObject {
         try KeychainSessionStore.save(stored)
         session = stored
         showingSignIn = false
+        iCloudSignInLog.notice("Session saved; sign-in sheet dismissed")
         isConnecting = false
         connectionError = nil
         if resumeAfterAuthentication {
@@ -610,6 +616,7 @@ final class AppModel: ObservableObject {
           startQueue()
         }
       } catch {
+        iCloudSignInLog.error("Local CLI session validation failed")
         isConnecting = false
         connectionError = error.localizedDescription
       }

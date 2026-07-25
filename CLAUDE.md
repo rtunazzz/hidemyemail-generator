@@ -18,7 +18,18 @@ uv run ruff check                                    # lint
 uv run ruff format                                   # format
 ```
 
-There are no tests and no test framework configured.
+Run the macOS Swift tests with `xcodebuild` after changing the app.
+
+### macOS build artifacts
+
+After every change under `macos/Sources/`, run
+`scripts/build-macos-app.sh "$(uname -m)"` before handing off the work. The
+script removes and regenerates `build/macos-app-$ARCH` and the matching macOS
+ZIP and DMG in `dist/`; an Xcode build alone does not refresh those artifacts.
+The distributable ZIP and DMG must never contain an Apple team signature.
+For signed local builds, set `CODESIGN_IDENTITY` to a stable Apple Development
+identity; the script applies it only to the ignored local app after packaging
+identity-free release artifacts.
 
 - `generate` options: `--label` (required), `--count` (default 1), `--cookie-file` (default `cookies.txt`), `--output` (default `emails.txt`), `--no-output-file`.
 - `list` options: `--label-query` (regex matched against the Label field), `--active/--inactive` (default `--active`), `--cookie-file`.
