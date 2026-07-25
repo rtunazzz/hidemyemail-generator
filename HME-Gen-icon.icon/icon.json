@@ -10,7 +10,8 @@
       "layers" : [
         {
           "blend-mode" : "normal",
-          "glass" : true,
+          "fill" : "none",
+          "glass" : false,
           "image-name" : "envelope.badge.plus.fill 2.svg",
           "name" : "envelope.badge.plus.fill 2",
           "position" : {
