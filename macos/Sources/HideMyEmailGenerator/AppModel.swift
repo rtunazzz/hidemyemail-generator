@@ -118,8 +118,11 @@ enum EmailHistoryStore {
 enum CooldownPolicy {
   static let minimumSeconds: TimeInterval = 30 * 60
 
-  static func seconds(retryAfter: Double?) -> TimeInterval {
-    max(minimumSeconds, retryAfter ?? 0)
+  static func seconds(
+    retryAfter: Double?,
+    interval: TimeInterval? = nil
+  ) -> TimeInterval {
+    max(interval ?? minimumSeconds, retryAfter ?? 0)
   }
 }
 
@@ -135,7 +138,6 @@ enum SchedulerPolicy {
 enum RunState: Equatable {
   case idle
   case running
-  case waiting(until: Date)
   case coolingDown(until: Date)
   case needsAuthentication
   case failed(String)
@@ -410,6 +412,7 @@ final class CLIClient: @unchecked Sendable {
 final class AppModel: ObservableObject {
   @Published private(set) var session: StoredSession?
   @Published var onDemandLabel = "generated"
+  @Published var onDemandQuantity = 1
   @Published var schedulerLabel = "generated"
   @Published var schedulerTargetCount = 100
   @Published var schedulerIntervalMinutes = SchedulerPolicy.defaultIntervalMinutes
@@ -458,7 +461,7 @@ final class AppModel: ObservableObject {
 
   var isBusy: Bool {
     switch runState {
-    case .running, .waiting, .coolingDown:
+    case .running, .coolingDown:
       return true
     default:
       return false
@@ -482,7 +485,7 @@ final class AppModel: ObservableObject {
   func generateOnDemand() {
     guard canGenerateOnDemand else { return }
     generatedEmails = []
-    runTarget = 1
+    runTarget = onDemandQuantity
     runLabel = onDemandLabel.trimmingCharacters(in: .whitespacesAndNewlines)
     runInterval = nil
     runKind = .onDemand
@@ -657,13 +660,6 @@ final class AppModel: ObservableObject {
           if let historyURL {
             try EmailHistoryStore.save(history, to: historyURL)
           }
-          if generatedEmails.count < runTarget, let runInterval {
-            runState = .waiting(until: Date().addingTimeInterval(runInterval))
-            try await Task<Never, Never>.sleep(
-              nanoseconds: UInt64(runInterval * 1_000_000_000)
-            )
-            runState = .running
-          }
           continue
         }
 
@@ -675,7 +671,10 @@ final class AppModel: ObservableObject {
             retryAfter: nil
           )
         if error.isRateLimit {
-          let seconds = CooldownPolicy.seconds(retryAfter: error.retryAfter)
+          let seconds = CooldownPolicy.seconds(
+            retryAfter: error.retryAfter,
+            interval: runInterval
+          )
           runState = .coolingDown(until: Date().addingTimeInterval(seconds))
           try await Task<Never, Never>.sleep(
             nanoseconds: UInt64(seconds * 1_000_000_000)

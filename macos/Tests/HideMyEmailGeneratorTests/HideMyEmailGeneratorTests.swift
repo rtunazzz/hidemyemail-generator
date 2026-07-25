@@ -20,6 +20,11 @@ final class HideMyEmailGeneratorTests: XCTestCase {
     XCTAssertEqual(CooldownPolicy.seconds(retryAfter: 3_600), 3_600)
   }
 
+  func testSchedulerIntervalStartsAtAppleLimit() {
+    XCTAssertEqual(CooldownPolicy.seconds(retryAfter: 2, interval: 1_920), 1_920)
+    XCTAssertEqual(CooldownPolicy.seconds(retryAfter: 3_600, interval: 1_920), 3_600)
+  }
+
   func testSchedulerDefaultsToThirtyTwoMinutes() {
     XCTAssertEqual(SchedulerPolicy.defaultIntervalMinutes, 32)
     XCTAssertEqual(SchedulerPolicy.seconds(minutes: 32), 1_920)

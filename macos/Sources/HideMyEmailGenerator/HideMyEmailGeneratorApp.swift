@@ -139,12 +139,12 @@ struct GenerateView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 18) {
         DetailHeader(
-          title: "Generate one address",
-          subtitle: "Create a Hide My Email address immediately.",
+          title: "Generate addresses",
+          subtitle: "Create Hide My Email addresses immediately.",
           systemImage: nil
         )
 
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 14) {
           Text("EMAIL DETAILS")
             .font(.caption2.weight(.semibold))
             .foregroundStyle(.tertiary)
@@ -154,6 +154,13 @@ struct GenerateView: View {
               .textFieldStyle(.roundedBorder)
               .disabled(model.isBusy)
               .frame(maxWidth: 420)
+          }
+          Divider()
+          LabeledContent("Quantity") {
+            Stepper(value: $model.onDemandQuantity, in: 1...100) {
+              Text("\(model.onDemandQuantity) emails")
+                .monospacedDigit()
+            }
           }
         }
         .padding(18)
@@ -167,7 +174,7 @@ struct GenerateView: View {
                 .controlSize(.small)
                 .accessibilityLabel("Generating email")
             } else {
-              Text("Generate Email")
+              Text(model.onDemandQuantity == 1 ? "Generate Email" : "Generate Emails")
             }
           }
             .modernPrimaryButton()
@@ -199,7 +206,7 @@ struct SchedulerView: View {
       VStack(alignment: .leading, spacing: 18) {
         DetailHeader(
           title: "Scheduled generation",
-          subtitle: "Create one address per interval until the target is complete.",
+          subtitle: "Generate continuously, then wait for the interval when Apple’s limit is reached.",
           systemImage: "calendar.badge.clock"
         )
 
@@ -214,7 +221,7 @@ struct SchedulerView: View {
               .frame(maxWidth: 420)
           }
           Divider()
-          LabeledContent("Target") {
+          LabeledContent("Quantity") {
             Stepper(value: $model.schedulerTargetCount, in: 1...100) {
               Text("\(model.schedulerTargetCount) emails")
                 .monospacedDigit()
@@ -414,13 +421,6 @@ struct RunStatusView: View {
         title: model.runKind == .scheduler ? "Generating scheduled email…" : "Generating…",
         detail: "Connecting to iCloud Hide My Email."
       )
-    case .waiting(let until):
-      TimelineView(.periodic(from: .now, by: 1)) { context in
-        progressBox(
-          title: "Waiting for the next scheduled email",
-          detail: "Next attempt in \(remaining(until: until, now: context.date))."
-        )
-      }
     case .coolingDown(let until):
       TimelineView(.periodic(from: .now, by: 1)) { context in
         progressBox(
