@@ -59,6 +59,20 @@ cp "$BUILD_ROOT/xcode/Build/Products/Release/HideMyEmailGenerator" \
   "$APP/Contents/MacOS/HideMyEmailGenerator"
 cp "$BUILD_ROOT/helper/hidemyemail" "$APP/Contents/Resources/hidemyemail"
 cp "$ROOT/macos/Info.plist" "$APP/Contents/Info.plist"
+DEVELOPER_DIR="$DEVELOPER_DIR" xcrun actool \
+  --compile "$APP/Contents/Resources" \
+  --platform macosx \
+  --minimum-deployment-target 13.0 \
+  --target-device mac \
+  --app-icon HME-Gen-icon \
+  --output-partial-info-plist "$BUILD_ROOT/icon-info.plist" \
+  --warnings \
+  --errors \
+  --notices \
+  --output-format human-readable-text \
+  "$ROOT/HME-Gen-icon.icon"
+test -f "$APP/Contents/Resources/Assets.car"
+test -f "$APP/Contents/Resources/HME-Gen-icon.icns"
 chmod 755 "$APP/Contents/MacOS/HideMyEmailGenerator" "$APP/Contents/Resources/hidemyemail"
 
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP/Contents/Info.plist"

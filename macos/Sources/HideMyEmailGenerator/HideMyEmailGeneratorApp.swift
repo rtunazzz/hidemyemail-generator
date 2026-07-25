@@ -141,7 +141,7 @@ struct GenerateView: View {
         DetailHeader(
           title: "Generate one address",
           subtitle: "Create a Hide My Email address immediately.",
-          systemImage: "wand.and.sparkles"
+          systemImage: nil
         )
 
         VStack(alignment: .leading, spacing: 10) {
@@ -160,18 +160,21 @@ struct GenerateView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .modernPanel()
 
-        HStack(spacing: 10) {
-          Button("Generate Email") { model.generateOnDemand() }
+        HStack {
+          Button { model.generateOnDemand() } label: {
+            if model.runKind == .onDemand, model.isBusy {
+              ProgressView()
+                .controlSize(.small)
+                .accessibilityLabel("Generating email")
+            } else {
+              Text("Generate Email")
+            }
+          }
             .modernPrimaryButton()
             .tint(.blue)
             .controlSize(.large)
             .disabled(!model.canGenerateOnDemand)
             .keyboardShortcut(.return, modifiers: .command)
-          if model.runKind == .onDemand, model.isBusy {
-            Button("Stop", role: .destructive) { model.stopGeneration() }
-              .modernButton()
-              .controlSize(.large)
-          }
         }
         .frame(maxWidth: .infinity)
 
@@ -339,15 +342,22 @@ struct EmailHistoryView: View {
 struct DetailHeader: View {
   let title: String
   let subtitle: String
-  let systemImage: String
+  let systemImage: String?
 
   var body: some View {
     HStack(spacing: 12) {
-      Image(systemName: systemImage)
-        .font(.title2.weight(.semibold))
-        .foregroundStyle(.tint)
-        .frame(width: 40, height: 40)
-        .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+      if let systemImage {
+        Image(systemName: systemImage)
+          .font(.title2.weight(.semibold))
+          .foregroundStyle(.tint)
+          .frame(width: 40, height: 40)
+          .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+      } else {
+        Image(nsImage: NSApplication.shared.applicationIconImage)
+          .resizable()
+          .scaledToFit()
+          .frame(width: 40, height: 40)
+      }
 
       VStack(alignment: .leading, spacing: 3) {
         Text(title)
@@ -376,7 +386,7 @@ extension View {
   @ViewBuilder
   func modernPrimaryButton() -> some View {
     if #available(macOS 26.0, *) {
-      buttonStyle(.glassProminent)
+      buttonStyle(.glass(.regular.tint(.blue)))
     } else {
       buttonStyle(.borderedProminent)
     }
@@ -426,10 +436,13 @@ struct RunStatusView: View {
     case .failed(let message):
       MessageBanner(message, color: .red)
     case .complete:
-      MessageBanner(
-        "Complete — generated \(model.generatedEmails.count) address\(model.generatedEmails.count == 1 ? "" : "es").",
-        color: .green
+      Text(
+        "Complete — generated \(model.generatedEmails.count) address\(model.generatedEmails.count == 1 ? "" : "es")."
       )
+      .textSelection(.enabled)
+      .frame(maxWidth: .infinity, alignment: .center)
+      .padding(11)
+      .background(.green.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
     }
   }
 
@@ -463,7 +476,7 @@ struct CurrentRunResults: View {
 
   var body: some View {
     if !model.generatedEmails.isEmpty {
-      GroupBox("Current run") {
+      GroupBox {
         VStack(spacing: 0) {
           ForEach(model.generatedEmails, id: \.self) { email in
             HStack {

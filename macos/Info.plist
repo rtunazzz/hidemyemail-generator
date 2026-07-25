@@ -8,6 +8,10 @@
 	<string>HideMyEmailGenerator</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.rtunazzz.HideMyEmailGenerator</string>
+	<key>CFBundleIconFile</key>
+	<string>HME-Gen-icon</string>
+	<key>CFBundleIconName</key>
+	<string>HME-Gen-icon</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
