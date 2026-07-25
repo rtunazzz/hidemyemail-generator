@@ -1,3 +1,7 @@
+<p align="center">
+  <img width="180" src="docs/app-icon.png" alt="HideMyEmail Generator 应用图标">
+</p>
+
 <h1 align="center">HideMyEmail Generator</h1>
 
 <p align="center">

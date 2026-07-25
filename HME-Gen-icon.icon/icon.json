@@ -9,6 +9,8 @@
     {
       "layers" : [
         {
+          "blend-mode" : "normal",
+          "glass" : true,
           "image-name" : "envelope.badge.plus.fill 2.svg",
           "name" : "envelope.badge.plus.fill 2",
           "position" : {
@@ -18,7 +20,19 @@
               18.9765625
             ]
           }
-        },
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.6
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.2
+      }
+    },
+    {
+      "layers" : [
         {
           "glass" : false,
           "image-name" : "cloud.fill.svg",
