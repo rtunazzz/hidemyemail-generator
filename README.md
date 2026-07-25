@@ -13,8 +13,8 @@
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-2ea44f"></a>
   <img alt="Python 3.12+" src="https://img.shields.io/badge/python-3.12%2B-3776ab?logo=python&logoColor=white">
-  <a href="https://github.com/rtunazzz/hidemyemail-generator/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/rtunazzz/hidemyemail-generator?logo=github"></a>
-  <a href="https://github.com/rtunazzz/hidemyemail-generator/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/rtunazzz/hidemyemail-generator/total?logo=github"></a>
+  <a href="../../releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/rtunazzz/hidemyemail-generator?logo=github"></a>
+  <a href="../../releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/rtunazzz/hidemyemail-generator/total?logo=github"></a>
 </p>
 
 <p align="center">
@@ -24,6 +24,29 @@
 </p>
 
 > You need an active iCloud+ subscription to generate Hide My Email addresses.
+
+## App Preview
+
+<p align="center">
+  <a href="../../releases/latest/download/HideMyEmail-Generator-macOS-Apple-Silicon.dmg"><strong>Download for Apple Silicon (.dmg)</strong></a>
+  ·
+  <a href="../../releases/latest/download/HideMyEmail-Generator-macOS-Intel.dmg"><strong>Download for Intel (.dmg)</strong></a>
+</p>
+
+<p align="center">
+  <img width="100%" src="docs/screenshots/generate.png" alt="Generate Hide My Email addresses from the native macOS app">
+</p>
+
+- Generate one address or a batch with a custom label.
+- Copy individual addresses, copy everything, or export your local history.
+- Schedule larger batches; the app pauses and resumes when Apple rate-limits creation.
+- Sign in natively, keep the session in Keychain, and see connection status at a glance.
+- Keep everything private: address history stays local and the app collects no telemetry.
+
+<p align="center">
+  <img width="49%" src="docs/screenshots/emails.png" alt="Local generated email history with copy and export controls">
+  <img width="49%" src="docs/screenshots/scheduler.png" alt="Rate-limit-aware scheduled email generation">
+</p>
 
 ## Overview
 
@@ -47,6 +70,7 @@ Alongside the basics it provides:
 
 ## Contents
 
+- [App Preview](#app-preview)
 - [Highlights](#highlights)
 - [Quick Start](#quick-start)
 - [macOS App](#macos-app)
@@ -72,7 +96,7 @@ Alongside the basics it provides:
 | Account check | Show the Apple ID, DSID, user partition, and Hide My Email availability for the saved cookie. |
 | iCloud China support | Use `icloud.com.cn` origins, setup validation, and maildomain hosts. |
 | Partition detection | Derive the correct `pNNN-maildomainws` host from captured requests or account validation. |
-| Native macOS app | Sign in to iCloud, generate sequentially, and automatically wait through rate limits. |
+| Native macOS app | Generate batches, browse and export local history, and automatically wait through rate limits. |
 | Windows launcher | Double-click menu for generation, listing, and cookie management. |
 | Bilingual UI | Launcher and CLI help include English and Simplified Chinese text. |
 | Cookie capture | Open iCloud Plus, click Hide My Email, capture the app request, and save the cookie locally. |
@@ -84,12 +108,14 @@ Alongside the basics it provides:
 
 ### Download a prebuilt binary
 
-Grab a standalone binary from the [latest release](https://github.com/rtunazzz/hidemyemail-generator/releases/latest) — no Python or `uv` required.
+Grab a standalone binary from the [latest release](../../releases/latest) — no Python or `uv` required.
 
 - **Windows:** download `hidemyemail-windows.exe`. Double-click it to open the interactive menu, or run it from a terminal with arguments for CLI usage (`hidemyemail-windows.exe --help`).
-- **macOS app:** download the `Apple-Silicon` DMG/ZIP for M-series Macs or the
-  `Intel` DMG/ZIP for Intel Macs, then right-click the app and choose **Open**
-  the first time.
+- **macOS app:** download the
+  [Apple Silicon DMG](../../releases/latest/download/HideMyEmail-Generator-macOS-Apple-Silicon.dmg)
+  for M-series Macs or the
+  [Intel DMG](../../releases/latest/download/HideMyEmail-Generator-macOS-Intel.dmg)
+  for Intel Macs, then right-click the app and choose **Open** the first time.
 - **macOS CLI:** download `hidemyemail-macos` for Apple Silicon or `hidemyemail-macos-x86_64` for Intel. Make it executable with `chmod +x`, then run it from Terminal.
 
 The native app captures its own iCloud session after you sign in. Prebuilt CLI
@@ -119,8 +145,9 @@ The app requires macOS 13 or newer. It bundles the CLI helper, so Python and
 2. Complete Apple's system account prompt or fallback sign-in form. The iCloud
    session is captured from the authenticated Hide My Email request before its
    page loads. The window closes automatically when the session validates.
-3. Use **Generate** for one address, or use **Scheduler** to create one address
-   at a configurable interval until a target is reached.
+3. Use **Generate** for one address or a batch, review and export them from
+   **Emails**, or use **Scheduler** to create addresses at a configurable
+   interval until a target is reached.
 
 The session cookie is validated locally and stored in macOS Keychain. Every
 helper invocation receives it through an owner-only temporary file that is

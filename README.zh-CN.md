@@ -1,16 +1,16 @@
 <h1 align="center">HideMyEmail Generator</h1>
 
 <p align="center">
-  从本地命令行生成、保留和管理 iCloud「隐藏邮件地址」。
+  通过原生 macOS 应用或本地命令行生成、保留和管理 iCloud「隐藏邮件地址」。
   <br>
-  包含 Windows 启动器、iCloud 中国区支持、本地收件台和自动 Cookie 捕获。
+  包含 macOS 原生登录、Windows 启动器、iCloud 中国区支持和本地收件台。
 </p>
 
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-2ea44f"></a>
   <img alt="Python 3.12+" src="https://img.shields.io/badge/python-3.12%2B-3776ab?logo=python&logoColor=white">
-  <a href="https://github.com/rtunazzz/hidemyemail-generator/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/rtunazzz/hidemyemail-generator?logo=github"></a>
-  <a href="https://github.com/rtunazzz/hidemyemail-generator/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/rtunazzz/hidemyemail-generator/total?logo=github"></a>
+  <a href="../../releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/rtunazzz/hidemyemail-generator?logo=github"></a>
+  <a href="../../releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/rtunazzz/hidemyemail-generator/total?logo=github"></a>
 </p>
 
 <p align="center">
@@ -21,10 +21,35 @@
 
 > 需要有效的 iCloud+ 订阅，才能生成「隐藏邮件地址」。
 
+## 应用预览
+
+<p align="center">
+  <a href="../../releases/latest/download/HideMyEmail-Generator-macOS-Apple-Silicon.dmg"><strong>下载 Apple 芯片版（.dmg）</strong></a>
+  ·
+  <a href="../../releases/latest/download/HideMyEmail-Generator-macOS-Intel.dmg"><strong>下载 Intel 版（.dmg）</strong></a>
+</p>
+
+<p align="center">
+  <img width="100%" src="docs/screenshots/generate.png" alt="在原生 macOS 应用中生成隐藏邮件地址">
+</p>
+
+- 使用自定义标签，一次生成一个或一批地址。
+- 复制单个地址、复制全部地址，或导出本地历史记录。
+- 安排大批量生成；遇到 Apple 频率限制时自动暂停并恢复。
+- 使用原生 iCloud 登录，将会话保存在钥匙串，并随时查看连接状态。
+- 地址历史仅保存在本机，应用不收集遥测数据。
+
+<p align="center">
+  <img width="49%" src="docs/screenshots/emails.png" alt="包含复制和导出功能的本地地址历史">
+  <img width="49%" src="docs/screenshots/scheduler.png" alt="可感知频率限制的定时生成">
+</p>
+
 ## 目录
 
+- [应用预览](#应用预览)
 - [功能亮点](#功能亮点)
 - [快速开始](#快速开始)
+- [macOS 应用](#macos-应用)
 - [Windows 启动器](#windows-启动器)
 - [命令行用法](#命令行用法)
 - [Cookie 管理](#cookie-管理)
@@ -47,6 +72,7 @@
 | 查看账号 | 显示当前 Cookie 对应的 Apple ID、DSID、用户分区和功能可用性。 |
 | iCloud 中国区 | 使用 `icloud.com.cn` 的 Origin、校验接口和 maildomain 主机。 |
 | 分区检测 | 从捕获请求或账号校验结果推导正确的 `pNNN-maildomainws` 主机。 |
+| 原生 macOS 应用 | 批量生成、浏览并导出本地历史记录，并在遇到频率限制时自动等待。 |
 | Windows 启动器 | 双击即可生成、查看和管理 Cookie。 |
 | 双语界面 | 启动器和 CLI 帮助包含英文和简体中文。 |
 | 自动捕获 Cookie | 打开 iCloud+，点击「隐藏邮件地址」，捕获应用请求并保存 Cookie。 |
@@ -58,12 +84,19 @@
 
 ### 下载预构建二进制
 
-从[最新发行版](https://github.com/rtunazzz/hidemyemail-generator/releases/latest)下载独立二进制文件，无需安装 Python 或 `uv`。
+从[最新发行版](../../releases/latest)下载独立二进制文件，无需安装 Python 或 `uv`。
 
 - **Windows：** 下载 `hidemyemail-windows.exe`。双击打开交互式菜单，或在终端中带参数运行以使用命令行（`hidemyemail-windows.exe --help`）。
-- **macOS：** 下载 `hidemyemail-macos`，然后执行 `chmod +x hidemyemail-macos`。不带参数运行会打开菜单，带参数则进入命令行。该二进制未签名，首次启动会被 Gatekeeper 拦截——在访达中右键点击并选择**打开**即可放行。
+- **macOS 应用：** M 系列 Mac 下载
+  [Apple 芯片版 DMG](../../releases/latest/download/HideMyEmail-Generator-macOS-Apple-Silicon.dmg)，
+  Intel Mac 下载
+  [Intel 版 DMG](../../releases/latest/download/HideMyEmail-Generator-macOS-Intel.dmg)。
+  首次启动时，请在访达中右键点击应用并选择**打开**。
+- **macOS 命令行：** Apple 芯片下载 `hidemyemail-macos`，Intel 下载
+  `hidemyemail-macos-x86_64`。执行 `chmod +x` 后从终端运行。
 
-预构建二进制使用手动获取 Cookie；自动获取（Playwright）仅在源码运行时可用。
+原生应用会在登录后捕获自己的 iCloud 会话。预构建的命令行二进制仍需手动获取
+Cookie；自动获取（Playwright）仅在源码运行时可用。
 
 ### 源码运行
 
@@ -78,6 +111,22 @@ Windows 下双击 `start-hidemyemail.bat`。直接使用命令行：
 ```bash
 uv run hidemyemail --help
 ```
+
+## macOS 应用
+
+应用需要 macOS 13 或更高版本，并内置命令行辅助程序，无需安装 Python 或
+`uv`。
+
+1. 打开应用并选择 **Connect iCloud**。
+2. 完成 Apple 系统账号提示或备用登录表单。会话验证成功后，登录窗口会自动关闭。
+3. 使用 **Generate** 生成一个或一批地址，在 **Emails** 中查看、复制和导出，
+   或使用 **Scheduler** 按设定间隔持续生成。
+
+会话会在本地验证并存储到 macOS 钥匙串。每次调用辅助程序时，会话只会通过仅限
+当前用户读取的临时文件传递，并在调用后立即删除。生成记录存储在本机。
+
+如果 Apple 限制生成频率，应用会保留已完成的地址、显示倒计时，并在至少 30 分钟
+后自动重试；调度运行期间需要保持应用开启。
 
 ## Windows 启动器
 
