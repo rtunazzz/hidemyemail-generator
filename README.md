@@ -5,9 +5,9 @@
 <h1 align="center">HideMyEmail Generator</h1>
 
 <p align="center">
-  Generate, reserve, and manage iCloud Hide My Email addresses from a local CLI.
+  Generate, reserve, and manage iCloud Hide My Email addresses from a native macOS app or local CLI.
   <br>
-  Includes a Windows launcher, iCloud China support, local inbox, and automated cookie capture.
+  Includes native macOS sign-in, a Windows launcher, iCloud China support, and a local inbox.
 </p>
 
 <p align="center">
@@ -27,14 +27,16 @@
 
 ## Overview
 
-HideMyEmail Generator is a local command-line utility for Apple's iCloud Hide My
-Email service. It generates and reserves new addresses, lists active or inactive
-ones, and inspects the account behind the currently saved iCloud cookie.
+HideMyEmail Generator is a local macOS app and command-line utility for Apple's
+iCloud Hide My Email service. It generates and reserves new addresses, lists
+active or inactive ones, and inspects the account behind the current iCloud
+session.
 
 Alongside the basics it provides:
 
 - region-aware iCloud API targeting for `global` and `china`;
 - automatic iCloud partition detection;
+- a native SwiftUI macOS app with in-app iCloud sign-in;
 - a one-click Windows launcher;
 - bilingual English / Simplified Chinese launcher and CLI output;
 - account-aware cookie management with browser-assisted capture;
@@ -47,6 +49,7 @@ Alongside the basics it provides:
 
 - [Highlights](#highlights)
 - [Quick Start](#quick-start)
+- [macOS App](#macos-app)
 - [Windows Launcher](#windows-launcher)
 - [CLI Reference](#cli-reference)
 - [Cookie Management](#cookie-management)
@@ -69,6 +72,7 @@ Alongside the basics it provides:
 | Account check | Show the Apple ID, DSID, user partition, and Hide My Email availability for the saved cookie. |
 | iCloud China support | Use `icloud.com.cn` origins, setup validation, and maildomain hosts. |
 | Partition detection | Derive the correct `pNNN-maildomainws` host from captured requests or account validation. |
+| Native macOS app | Sign in to iCloud, generate sequentially, and automatically wait through rate limits. |
 | Windows launcher | Double-click menu for generation, listing, and cookie management. |
 | Bilingual UI | Launcher and CLI help include English and Simplified Chinese text. |
 | Cookie capture | Open iCloud Plus, click Hide My Email, capture the app request, and save the cookie locally. |
@@ -83,9 +87,14 @@ Alongside the basics it provides:
 Grab a standalone binary from the [latest release](https://github.com/rtunazzz/hidemyemail-generator/releases/latest) — no Python or `uv` required.
 
 - **Windows:** download `hidemyemail-windows.exe`. Double-click it to open the interactive menu, or run it from a terminal with arguments for CLI usage (`hidemyemail-windows.exe --help`).
-- **macOS:** download `hidemyemail-macos`, then `chmod +x hidemyemail-macos`. Run with no arguments to open the menu, or pass arguments for the CLI. The binary is unsigned, so the first launch is blocked by Gatekeeper — right-click it in Finder and choose **Open** to allow it.
+- **macOS app:** download the `Apple-Silicon` DMG/ZIP for M-series Macs or the
+  `Intel` DMG/ZIP for Intel Macs, then right-click the app and choose **Open**
+  the first time.
+- **macOS CLI:** download `hidemyemail-macos` for Apple Silicon or `hidemyemail-macos-x86_64` for Intel. Make it executable with `chmod +x`, then run it from Terminal.
 
-The prebuilt binaries use manual cookie capture; automatic capture (Playwright) is only available when running from source.
+The native app captures its own iCloud session after you sign in. Prebuilt CLI
+binaries still use manual cookie capture; Playwright capture is available only
+when running the CLI from source.
 
 ### Run from source
 
@@ -100,6 +109,40 @@ On Windows, double-click `start-hidemyemail.bat`. For direct CLI usage:
 ```bash
 uv run hidemyemail --help
 ```
+
+## macOS App
+
+The app requires macOS 13 or newer. It bundles the CLI helper, so Python and
+`uv` are not required.
+
+1. Open the app and choose **Connect iCloud**.
+2. Complete Apple's system account prompt or fallback sign-in form. The iCloud
+   landing page stays hidden; no Hide My Email page navigation is required.
+   The window closes automatically when the session validates.
+3. Use **Generate** for one address, or use **Scheduler** to create one address
+   at a configurable interval until a target is reached.
+
+The session cookie is validated locally and stored in macOS Keychain. Every
+helper invocation receives it through an owner-only temporary file that is
+deleted immediately afterward. Generated addresses are also appended to
+`~/Library/Application Support/HideMyEmail Generator/emails.txt`. The
+**Emails** tab stores each address, label, and generation time in a local
+owner-only history file.
+
+If Apple rate-limits creation, the app preserves completed addresses, shows a
+countdown, and retries after at least 30 minutes while the app remains open.
+Use **Import Cookie File…** only if embedded sign-in does not provide the
+required cookie.
+
+To build the unsigned app from source:
+
+```bash
+scripts/build-macos-app.sh "$(uname -m)"
+```
+
+The script builds one exact architecture and refuses cross-architecture
+packaging. Run it on Apple Silicon for the Apple Silicon app and on an Intel
+Mac (or the matching GitHub runner) for the Intel app.
 
 ## Windows Launcher
 
@@ -166,6 +209,7 @@ Options:
 | `--output` | File used to append generated addresses. Defaults to `emails.txt`. |
 | `--no-output-file` | Print results without writing to an output file. |
 | `--region` | `global` (default) or `china`. |
+| `--result-json` | Write a machine-readable result for integrations such as the macOS app. |
 
 ### List
 
@@ -357,6 +401,9 @@ These files are local-only and ignored by Git:
 ## Security and Privacy
 
 - Cookies are stored locally and ignored by Git.
+- The macOS app stores its validated session in Keychain and never stores or logs the Apple Account password.
+- The macOS app uses owner-only temporary cookie files and deletes them after each helper invocation.
+- The macOS app contains no analytics, telemetry, advertising, or crash-reporting SDK. It communicates only with Apple's iCloud endpoints during sign-in and generation.
 - IMAP configuration and local mailbox data are stored locally and ignored by Git.
 - Automatic capture uses a separate browser profile.
 - The project does not intentionally collect, upload, or share your cookies, email data, or verification codes.
@@ -368,6 +415,9 @@ These files are local-only and ignored by Git:
 Apple may rate-limit Hide My Email creation. Observed limits are roughly
 `5 * number of people in your iCloud family` new addresses every 30 minutes,
 with a total cap around 700 addresses.
+
+The macOS app does not bypass this limit. It generates sequentially and resumes
+after a cooldown when Apple returns error `-41015`.
 
 ## Disclaimer
 
