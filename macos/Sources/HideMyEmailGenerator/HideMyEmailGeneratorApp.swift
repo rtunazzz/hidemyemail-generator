@@ -965,6 +965,7 @@ struct DetailHeader: View {
 extension View {
   @ViewBuilder
   func modernPanel() -> some View {
+#if compiler(>=6.2)
     if #available(macOS 26.0, *) {
       glassEffect(.regular.interactive(), in: .rect(cornerRadius: 18))
     } else {
@@ -974,24 +975,39 @@ extension View {
             .stroke(.separator.opacity(0.5))
         }
     }
+#else
+    background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 18))
+      .overlay {
+        RoundedRectangle(cornerRadius: 18)
+          .stroke(.separator.opacity(0.5))
+      }
+#endif
   }
 
   @ViewBuilder
   func modernPrimaryButton() -> some View {
+#if compiler(>=6.2)
     if #available(macOS 26.0, *) {
       buttonStyle(.glass(.regular.tint(.blue)))
     } else {
       buttonStyle(.borderedProminent)
     }
+#else
+    buttonStyle(.borderedProminent)
+#endif
   }
 
   @ViewBuilder
   func modernButton() -> some View {
+#if compiler(>=6.2)
     if #available(macOS 26.0, *) {
       buttonStyle(.glass)
     } else {
       buttonStyle(.bordered)
     }
+#else
+    buttonStyle(.bordered)
+#endif
   }
 }
 
