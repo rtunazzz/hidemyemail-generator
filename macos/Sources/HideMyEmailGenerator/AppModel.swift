@@ -213,8 +213,10 @@ final class ProcessRunner: @unchecked Sendable {
     process.executableURL = executable
     process.arguments = arguments
     process.currentDirectoryURL = currentDirectory
-    process.standardOutput = Pipe()
-    process.standardError = Pipe()
+    // Undrained pipes deadlock the helper once output exceeds the pipe buffer;
+    // helper output is unused — results arrive via --result-json.
+    process.standardOutput = FileHandle.nullDevice
+    process.standardError = FileHandle.nullDevice
 
     setActive(process)
     let status: Int32 = try await withTaskCancellationHandler {
