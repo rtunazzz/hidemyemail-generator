@@ -30,5 +30,7 @@
 	<true/>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>SUPublicEDKey</key>
+	<string>CTtQVjKq6ytg65Ntiv3WLuwMljBcPqW0YB1ep0VLkJw=</string>
 </dict>
 </plist>
