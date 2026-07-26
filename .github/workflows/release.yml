@@ -6,7 +6,7 @@ on:
       - "v*"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   validate:
@@ -60,7 +60,6 @@ jobs:
 
   macos:
     needs: validate
-    environment: release
     strategy:
       fail-fast: false
       matrix:
@@ -118,6 +117,47 @@ jobs:
           lipo -archs "$app/Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle" \
             | grep -Fqw "${{ matrix.arch }}"
 
+      - name: Stage unsigned release
+        shell: bash
+        run: |
+          stage="build/unsigned-${{ matrix.arch }}"
+          tools="build/macos-app-${{ matrix.arch }}/xcode/SourcePackages/artifacts/sparkle/Sparkle/bin"
+          mkdir -p "$stage"
+          cp \
+            "dist/${{ matrix.cli_asset }}" \
+            "dist/HideMyEmail-Generator-macOS-${{ matrix.app_label }}.zip" \
+            "dist/HideMyEmail-Generator-macOS-${{ matrix.app_label }}.dmg" \
+            "$stage/"
+          cp -R "$tools" "$stage/tools"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-macos-${{ matrix.arch }}
+          path: build/unsigned-${{ matrix.arch }}/
+          if-no-files-found: error
+
+  sign:
+    needs: macos
+    environment: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+            cli_asset: hidemyemail-macos
+            app_label: Apple-Silicon
+          - runner: macos-15-intel
+            arch: x86_64
+            cli_asset: hidemyemail-macos-x86_64
+            app_label: Intel
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: unsigned-macos-${{ matrix.arch }}
+          path: unsigned
+
       - name: Generate signed appcast
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
@@ -125,9 +165,13 @@ jobs:
         run: |
           updates="build/appcast-${{ matrix.arch }}"
           archive="HideMyEmail-Generator-macOS-${{ matrix.app_label }}.zip"
-          tools="build/macos-app-${{ matrix.arch }}/xcode/SourcePackages/artifacts/sparkle/Sparkle/bin"
-          mkdir -p "$updates"
-          cp "dist/$archive" "$updates/$archive"
+          tools="unsigned/tools"
+          chmod +x \
+            "$tools/BinaryDelta" \
+            "$tools/generate_appcast" \
+            "$tools/sign_update"
+          mkdir -p "$updates" dist
+          cp "unsigned/$archive" "$updates/$archive"
 
           printf '%s' "$SPARKLE_PRIVATE_KEY" \
             | "$tools/generate_appcast" \
@@ -141,7 +185,7 @@ jobs:
 
           cp "$updates/appcast-${{ matrix.arch }}.xml" dist/
           appcast="dist/appcast-${{ matrix.arch }}.xml"
-          signature="$(sed -n 's/.*sparkle:edSignature=\"\\([^\"]*\\)\".*/\\1/p' "$appcast")"
+          signature="$(sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p' "$appcast")"
           test -n "$signature"
           grep -Fq "/releases/download/${GITHUB_REF_NAME}/$archive" \
             "$appcast"
@@ -157,6 +201,12 @@ jobs:
             exit 1
           fi
 
+          cp \
+            "unsigned/${{ matrix.cli_asset }}" \
+            "unsigned/HideMyEmail-Generator-macOS-${{ matrix.app_label }}.zip" \
+            "unsigned/HideMyEmail-Generator-macOS-${{ matrix.app_label }}.dmg" \
+            dist/
+
       - uses: actions/upload-artifact@v4
         with:
           name: release-macos-${{ matrix.arch }}
@@ -168,11 +218,14 @@ jobs:
           if-no-files-found: error
 
   release:
-    needs: [windows, macos]
+    needs: [windows, sign]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
+          pattern: release-*
           path: release-assets
           merge-multiple: true
 

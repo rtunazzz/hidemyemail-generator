@@ -179,10 +179,8 @@ Mac (or the matching GitHub runner) for the Intel app.
 
 ### Releasing
 
-macOS updates use Sparkle and are published only from version tags. Before the
-first updater release, an upstream maintainer must add the exported EdDSA
-private key as the `SPARKLE_PRIVATE_KEY` GitHub Actions secret. The matching
-public key is embedded in `macos/Info.plist`.
+macOS updates use Sparkle and are published only from version tags. The
+verification public key is embedded in `macos/Info.plist`.
 
 1. Bump the version in `pyproject.toml`, `uv.lock`, and `macos/Info.plist`.
 2. Merge the tested change to `main`.
