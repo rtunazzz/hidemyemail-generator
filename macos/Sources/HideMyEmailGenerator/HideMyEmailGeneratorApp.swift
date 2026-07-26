@@ -553,11 +553,6 @@ struct AddressesView: View {
           .disabled(model.isManaging)
         }
         .width(min: 80, ideal: 90)
-        TableColumn("Source") { address in
-          Text(address.source.capitalized)
-            .foregroundStyle(.secondary)
-        }
-          .width(min: 90, ideal: 130)
         TableColumn("Updated") { address in
           Text(compactTimestamp(address.updatedAt))
             .foregroundStyle(.secondary)
@@ -864,6 +859,10 @@ struct InboxView: View {
 struct InboxSettingsPanel: View {
   @EnvironmentObject private var model: AppModel
 
+  private var canSave: Bool {
+    model.inboxSettings.isComplete && !model.inboxPassword.isEmpty && !model.isManaging
+  }
+
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       DetailHeader(
@@ -908,17 +907,26 @@ struct InboxSettingsPanel: View {
       }
 
       HStack {
+        Spacer()
+        Button { model.saveInboxConfiguration() } label: {
+          Text("Save Settings")
+            .fontWeight(.semibold)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 8)
+            .background(.blue, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(!canSave)
+        .opacity(canSave ? 1 : 0.45)
+        Spacer()
+      }
+      .overlay(alignment: .leading) {
         if model.hasInboxConfiguration {
           Button("Remove Credentials", role: .destructive) {
             model.clearInboxConfiguration()
           }
         }
-        Spacer()
-        Button("Save Settings") { model.saveInboxConfiguration() }
-          .modernPrimaryButton()
-          .disabled(
-            !model.inboxSettings.isComplete || model.inboxPassword.isEmpty || model.isManaging
-          )
       }
     }
   }
