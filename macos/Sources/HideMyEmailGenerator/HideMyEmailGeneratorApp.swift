@@ -101,21 +101,24 @@ struct HideMyEmailGeneratorApp: App {
 
 enum AppSection: String, CaseIterable, Identifiable {
   case generate
-  case emails
+  case addresses
+  case inbox
   case scheduler
 
   var id: Self { self }
   var title: String {
     switch self {
     case .generate: "Generate"
-    case .emails: "Emails"
+    case .addresses: "Addresses"
+    case .inbox: "Inbox"
     case .scheduler: "Scheduler"
     }
   }
   var icon: String {
     switch self {
     case .generate: "plus.circle"
-    case .emails: "envelope"
+    case .addresses: "at"
+    case .inbox: "tray"
     case .scheduler: "clock"
     }
   }
@@ -125,7 +128,7 @@ struct ContentView: View {
   @EnvironmentObject private var model: AppModel
   @EnvironmentObject private var updater: UpdateController
   @State private var selection = AppSection.generate
-  @State private var isConfirmingSignOut = false
+  @State private var showingAccount = false
 
   var body: some View {
     NavigationSplitView {
@@ -167,8 +170,10 @@ struct ContentView: View {
           switch selection {
           case .generate:
             GenerateView()
-          case .emails:
-            EmailHistoryView()
+          case .addresses:
+            AddressesView()
+          case .inbox:
+            InboxView()
           case .scheduler:
             SchedulerView()
           }
@@ -188,7 +193,7 @@ struct ContentView: View {
     ToolbarItem(placement: .primaryAction) {
       if let session = model.session {
         Button {
-          isConfirmingSignOut = true
+          showingAccount = true
         } label: {
           Image(systemName: "checkmark.icloud.fill")
             .symbolRenderingMode(.palette)
@@ -196,17 +201,11 @@ struct ContentView: View {
             .imageScale(.large)
         }
         .buttonStyle(.plain)
-        .help("Connected as \(session.account.name). Click to sign out.")
+        .help("Connected as \(session.account.name).")
         .accessibilityLabel("iCloud connected")
-        .confirmationDialog(
-          "Would you like to sign out?",
-          isPresented: $isConfirmingSignOut,
-          titleVisibility: .visible
-        ) {
-          Button("Sign Out", role: .destructive) { model.signOut() }
-          Button("Cancel", role: .cancel) {}
-        } message: {
-          Text("This removes the saved iCloud session cookie from this Mac.")
+        .popover(isPresented: $showingAccount, arrowEdge: .bottom) {
+          AccountPopover()
+            .environmentObject(model)
         }
       } else {
         Button { model.reconnect() } label: {
@@ -372,66 +371,554 @@ struct SchedulerView: View {
   }
 }
 
-struct EmailHistoryView: View {
+enum AddressScope: String, CaseIterable, Identifiable {
+  case local
+  case icloud
+  case history
+
+  var id: Self { self }
+  var title: String {
+    switch self {
+    case .local: "Local"
+    case .icloud: "iCloud"
+    case .history: "History"
+    }
+  }
+}
+
+enum LocalAddressFilter: String, CaseIterable, Identifiable {
+  case all
+  case unused
+  case used
+  case trash
+
+  var id: Self { self }
+  var title: String { rawValue.capitalized }
+  var state: AddressState? { AddressState(rawValue: rawValue) }
+}
+
+struct AddressesView: View {
   @EnvironmentObject private var model: AppModel
+  @State private var scope = AddressScope.local
+  @State private var localFilter = LocalAddressFilter.all
+  @State private var cloudActive = true
+  @State private var search = ""
+
+  private var filteredLocal: [LocalAddress] {
+    model.localAddresses.filter { address in
+      (localFilter.state == nil || address.state == localFilter.state)
+        && matchesSearch(address.email, address.label)
+    }
+  }
+
+  private var filteredCloud: [CloudAddress] {
+    model.cloudAddresses.filter { matchesSearch($0.email, $0.label) }
+  }
+
+  private var filteredHistory: [GeneratedEmailRecord] {
+    model.history.filter { matchesSearch($0.email, $0.label) }
+  }
 
   var body: some View {
     VStack(spacing: 0) {
-      HStack {
-        Text("\(model.history.count) generated")
-          .foregroundStyle(.secondary)
+      HStack(spacing: 12) {
+        Picker("Address source", selection: $scope) {
+          ForEach(AddressScope.allCases) { item in
+            Text(item.title).tag(item)
+          }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .frame(width: 270)
+
         Spacer()
-        Button("Copy All") { model.copyHistory() }
-          .disabled(model.history.isEmpty)
-        Button("Export…") { model.exportHistory() }
-          .disabled(model.history.isEmpty)
+
+        if model.isManaging {
+          ProgressView()
+            .controlSize(.small)
+        }
+
+        switch scope {
+        case .local:
+          Button("Sync iCloud") { model.syncICloudAddresses() }
+            .disabled(model.session == nil || model.isManaging)
+          Button("Export CSV…") { model.exportCSV() }
+            .disabled(model.isManaging)
+          Button { model.refreshLocalAddresses() } label: {
+            Image(systemName: "arrow.clockwise")
+          }
+          .disabled(model.isManaging)
+          .help("Refresh local addresses")
+        case .icloud:
+          Button("Sync to Local") { model.syncICloudAddresses() }
+            .disabled(model.session == nil || model.isManaging)
+          Button { model.refreshCloudAddresses(active: cloudActive) } label: {
+            Image(systemName: "arrow.clockwise")
+          }
+          .disabled(model.session == nil || model.isManaging)
+          .help("Refresh iCloud addresses")
+        case .history:
+          Button("Copy All") { model.copyHistory() }
+            .disabled(model.history.isEmpty)
+          Button("Export…") { model.exportHistory() }
+            .disabled(model.history.isEmpty)
+        }
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 10)
 
       Divider()
 
-      Table(model.history) {
-        TableColumn("Email") { record in
-          HStack {
-            Text(record.email)
-              .font(.system(.body, design: .monospaced))
-              .textSelection(.enabled)
-            Spacer()
-            Button {
-              model.copy(record.email)
-            } label: {
-              Image(systemName: "doc.on.doc")
-            }
-            .buttonStyle(.borderless)
-            .help("Copy address")
-            .accessibilityLabel("Copy \(record.email)")
+      VStack(spacing: 0) {
+        if let error = model.managementError {
+          MessageBanner(error, color: .red)
+            .padding(12)
+        } else if let notice = model.managementNotice {
+          MessageBanner(notice, color: .green)
+            .padding(12)
+        }
+
+        switch scope {
+        case .local:
+          localAddresses
+        case .icloud:
+          cloudAddresses
+        case .history:
+          historyAddresses
+        }
+      }
+      .searchable(text: $search, placement: .toolbar, prompt: "Search addresses or labels")
+    }
+    .task {
+      model.refreshLocalAddresses()
+    }
+    .onChange(of: scope) { newScope in
+      if newScope == .local {
+        model.refreshLocalAddresses()
+      } else if newScope == .icloud {
+        model.refreshCloudAddresses(active: cloudActive)
+      }
+    }
+    .onChange(of: cloudActive) { active in
+      if scope == .icloud {
+        model.refreshCloudAddresses(active: active)
+      }
+    }
+  }
+
+  private var localAddresses: some View {
+    VStack(spacing: 0) {
+      HStack(spacing: 8) {
+        CountBadge(title: "All", count: model.localAddresses.count, color: .blue)
+        ForEach(AddressState.allCases) { state in
+          CountBadge(
+            title: state.title,
+            count: model.localAddresses.filter { $0.state == state }.count,
+            color: stateColor(state)
+          )
+        }
+        Spacer()
+        Picker("State", selection: $localFilter) {
+          ForEach(LocalAddressFilter.allCases) { filter in
+            Text(filter.title).tag(filter)
           }
         }
+        .labelsHidden()
+        .frame(width: 120)
+      }
+      .padding(12)
+
+      Divider()
+
+      Table(filteredLocal) {
+        TableColumn("Email") { address in
+          CopyableAddress(address.email)
+        }
         TableColumn("Label", value: \.label)
-          .width(min: 90, ideal: 130)
-        TableColumn("Generated") { record in
-          Text(
-            record.generatedAt.formatted(
-              date: .abbreviated,
-              time: .shortened
+          .width(min: 90, ideal: 140)
+        TableColumn("State") { address in
+          Menu {
+            ForEach(AddressState.allCases) { state in
+              Button(state.title) {
+                model.markAddress(address.email, state: state)
+              }
+            }
+          } label: {
+            StatusPill(
+              title: address.state.title,
+              color: stateColor(address.state)
             )
-          )
+          }
+          .menuStyle(.borderlessButton)
+          .disabled(model.isManaging)
+        }
+        .width(min: 80, ideal: 90)
+        TableColumn("Source") { address in
+          Text(address.source.capitalized)
+            .foregroundStyle(.secondary)
+        }
+          .width(min: 90, ideal: 130)
+        TableColumn("Updated") { address in
+          Text(compactTimestamp(address.updatedAt))
+            .foregroundStyle(.secondary)
         }
         .width(min: 130, ideal: 160)
       }
       .overlay {
-        if model.history.isEmpty {
-          VStack(spacing: 8) {
-            Image(systemName: "envelope.open")
-              .font(.system(size: 32))
-              .foregroundStyle(.secondary)
-            Text("No generated emails")
+        if filteredLocal.isEmpty {
+          EmptyState(
+            icon: "at.badge.plus",
+            title: "No local addresses",
+            message: "Generate an address or sync your iCloud inventory."
+          )
+        }
+      }
+    }
+  }
+
+  private var cloudAddresses: some View {
+    VStack(spacing: 0) {
+      HStack {
+        Picker("iCloud status", selection: $cloudActive) {
+          Text("Active").tag(true)
+          Text("Inactive").tag(false)
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .frame(width: 180)
+        Spacer()
+        Text("\(filteredCloud.count) \(cloudActive ? "active" : "inactive")")
+          .foregroundStyle(.secondary)
+      }
+      .padding(12)
+
+      Divider()
+
+      Table(filteredCloud) {
+        TableColumn("Email") { address in
+          CopyableAddress(address.email)
+        }
+        TableColumn("Label", value: \.label)
+          .width(min: 100, ideal: 180)
+        TableColumn("Created") { address in
+          Text(compactTimestamp(address.createdAt))
+            .foregroundStyle(.secondary)
+        }
+        .width(min: 130, ideal: 160)
+      }
+      .overlay {
+        if filteredCloud.isEmpty {
+          EmptyState(
+            icon: cloudActive ? "icloud" : "icloud.slash",
+            title: cloudActive ? "No active addresses" : "No inactive addresses",
+            message: model.session == nil
+              ? "Connect iCloud to load your inventory."
+              : "Refresh to check your current iCloud inventory."
+          )
+        }
+      }
+    }
+  }
+
+  private var historyAddresses: some View {
+    Table(filteredHistory) {
+      TableColumn("Email") { record in
+        CopyableAddress(record.email)
+      }
+      TableColumn("Label", value: \.label)
+        .width(min: 90, ideal: 130)
+      TableColumn("Generated") { record in
+        Text(record.generatedAt.formatted(date: .abbreviated, time: .shortened))
+      }
+      .width(min: 130, ideal: 160)
+    }
+    .overlay {
+      if filteredHistory.isEmpty {
+        EmptyState(
+          icon: "clock.arrow.circlepath",
+          title: "No generated history",
+          message: "Newly generated addresses will appear here."
+        )
+      }
+    }
+  }
+
+  private func matchesSearch(_ email: String, _ label: String) -> Bool {
+    let query = search.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    return query.isEmpty || email.lowercased().contains(query) || label.lowercased().contains(query)
+  }
+}
+
+enum InboxScope: String, CaseIterable, Identifiable {
+  case messages
+  case codes
+
+  var id: Self { self }
+  var title: String { rawValue.capitalized }
+}
+
+struct InboxView: View {
+  @EnvironmentObject private var model: AppModel
+  @State private var scope = InboxScope.messages
+  @State private var selectedMessageID: String?
+  @State private var showingSettings = false
+
+  private var rows: [InboxMessage] {
+    scope == .codes ? model.verificationCodes : model.inboxMessages
+  }
+
+  private var selectedMessage: InboxMessage? {
+    rows.first { $0.id == selectedMessageID }
+  }
+
+  var body: some View {
+    VStack(spacing: 0) {
+      HStack(spacing: 10) {
+        if let summary = model.inboxStatus?.config {
+          VStack(alignment: .leading, spacing: 2) {
+            Text(summary.username)
               .font(.headline)
-            Text("New addresses will appear here.")
+            Text("\(summary.host):\(summary.port) · \(summary.folder)")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
+        } else {
+          VStack(alignment: .leading, spacing: 2) {
+            Text("Local inbox")
+              .font(.headline)
+            Text("Mail and verification codes stay on this Mac.")
+              .font(.caption)
               .foregroundStyle(.secondary)
           }
         }
+
+        Spacer()
+
+        if model.isManaging {
+          ProgressView()
+            .controlSize(.small)
+        }
+        Button(model.hasInboxConfiguration ? "Settings…" : "Configure…") {
+          showingSettings = true
+        }
+        Button("Sync") { model.syncInbox() }
+          .disabled(!model.hasInboxConfiguration || model.isManaging)
+        Button("Export CSV…") { model.exportCSV() }
+          .disabled(model.isManaging)
+        Button { model.refreshInbox() } label: {
+          Image(systemName: "arrow.clockwise")
+        }
+        .disabled(model.isManaging)
+        .help("Refresh local inbox")
+      }
+      .padding(.horizontal, 16)
+      .padding(.vertical, 10)
+
+      Divider()
+
+      if !model.hasInboxConfiguration && model.inboxMessages.isEmpty {
+        ScrollView {
+          InboxSettingsPanel()
+            .environmentObject(model)
+            .frame(maxWidth: 560)
+            .padding(24)
+        }
+      } else {
+        inboxContent
+      }
+    }
+    .task {
+      model.refreshInbox()
+    }
+    .sheet(isPresented: $showingSettings) {
+      VStack(spacing: 0) {
+        HStack {
+          Text("Inbox Settings")
+            .font(.headline)
+          Spacer()
+          Button("Done") { showingSettings = false }
+        }
+        .padding(16)
+        Divider()
+        InboxSettingsPanel()
+          .environmentObject(model)
+          .padding(20)
+      }
+      .frame(width: 560)
+    }
+  }
+
+  private var inboxContent: some View {
+    VStack(spacing: 0) {
+      if let error = model.managementError {
+        MessageBanner(error, color: .red)
+          .padding(12)
+      } else if let notice = model.managementNotice {
+        MessageBanner(notice, color: .green)
+          .padding(12)
+      }
+
+      HStack(spacing: 8) {
+        CountBadge(
+          title: "Addresses",
+          count: model.inboxStatus?.counts?.addresses ?? model.localAddresses.count,
+          color: .blue
+        )
+        CountBadge(
+          title: "Messages",
+          count: model.inboxStatus?.counts?.messages ?? model.inboxMessages.count,
+          color: .indigo
+        )
+        CountBadge(
+          title: "Codes",
+          count: model.inboxStatus?.counts?.codes ?? model.verificationCodes.count,
+          color: .green
+        )
+        Spacer()
+        Picker("Inbox view", selection: $scope) {
+          ForEach(InboxScope.allCases) { item in
+            Text(item.title).tag(item)
+          }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .frame(width: 190)
+      }
+      .padding(12)
+
+      Divider()
+
+      Table(rows, selection: $selectedMessageID) {
+        TableColumn("Received") { message in
+          Text(compactTimestamp(message.receivedAt ?? ""))
+            .foregroundStyle(.secondary)
+        }
+        .width(min: 120, ideal: 145)
+        TableColumn("Hide My Email") { message in
+          Text(message.hmeAddress ?? "—")
+            .font(.system(.body, design: .monospaced))
+            .lineLimit(1)
+        }
+        .width(min: 150, ideal: 210)
+        TableColumn("Sender") { message in
+          Text(message.sender ?? "—")
+            .lineLimit(1)
+        }
+        .width(min: 120, ideal: 180)
+        TableColumn("Subject") { message in
+          Text(message.subject ?? "—")
+            .lineLimit(1)
+        }
+        TableColumn("Code") { message in
+          if let code = message.code, !code.isEmpty {
+            HStack {
+              Text(code)
+                .font(.system(.body, design: .monospaced).weight(.semibold))
+              Button { model.copy(code) } label: {
+                Image(systemName: "doc.on.doc")
+              }
+              .buttonStyle(.borderless)
+              .accessibilityLabel("Copy code \(code)")
+            }
+          } else {
+            Text("—")
+              .foregroundStyle(.tertiary)
+          }
+        }
+        .width(min: 90, ideal: 120)
+      }
+      .overlay {
+        if rows.isEmpty {
+          EmptyState(
+            icon: scope == .codes ? "number.square" : "tray",
+            title: scope == .codes ? "No verification codes" : "No inbox messages",
+            message: "Sync the receiving mailbox to fetch recent mail."
+          )
+        }
+      }
+
+      if let message = selectedMessage {
+        Divider()
+        VStack(alignment: .leading, spacing: 8) {
+          HStack {
+            Text(message.subject ?? "Message")
+              .font(.headline)
+            Spacer()
+            if let code = message.code, !code.isEmpty {
+              Button("Copy \(code)") { model.copy(code) }
+            }
+          }
+          Text(message.bodyPreview ?? "No message preview available.")
+            .foregroundStyle(.secondary)
+            .textSelection(.enabled)
+            .lineLimit(5)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 105, alignment: .topLeading)
+        .background(.quaternary.opacity(0.2))
+      }
+    }
+  }
+}
+
+struct InboxSettingsPanel: View {
+  @EnvironmentObject private var model: AppModel
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      DetailHeader(
+        title: "Connect a receiving mailbox",
+        subtitle: "Use an app password when your mail provider supports one.",
+        systemImage: "lock.shield"
+      )
+
+      VStack(alignment: .leading, spacing: 12) {
+        LabeledContent("IMAP host") {
+          TextField("imap.example.com", text: $model.inboxSettings.host)
+            .textFieldStyle(.roundedBorder)
+            .frame(maxWidth: 320)
+        }
+        LabeledContent("Port") {
+          TextField("993", value: $model.inboxSettings.port, format: .number)
+            .textFieldStyle(.roundedBorder)
+            .frame(width: 100)
+        }
+        LabeledContent("Username") {
+          TextField("you@example.com", text: $model.inboxSettings.username)
+            .textFieldStyle(.roundedBorder)
+            .frame(maxWidth: 320)
+        }
+        LabeledContent("Password") {
+          SecureField("App password", text: $model.inboxPassword)
+            .textFieldStyle(.roundedBorder)
+            .frame(maxWidth: 320)
+        }
+        LabeledContent("Folder") {
+          TextField("INBOX", text: $model.inboxSettings.folder)
+            .textFieldStyle(.roundedBorder)
+            .frame(maxWidth: 180)
+        }
+        Toggle("Use SSL", isOn: $model.inboxSettings.useSSL)
+      }
+      .padding(18)
+      .modernPanel()
+
+      if let error = model.managementError {
+        MessageBanner(error, color: .red)
+      }
+
+      HStack {
+        if model.hasInboxConfiguration {
+          Button("Remove Credentials", role: .destructive) {
+            model.clearInboxConfiguration()
+          }
+        }
+        Spacer()
+        Button("Save Settings") { model.saveInboxConfiguration() }
+          .modernPrimaryButton()
+          .disabled(
+            !model.inboxSettings.isComplete || model.inboxPassword.isEmpty || model.isManaging
+          )
       }
     }
   }
@@ -601,6 +1088,177 @@ struct CurrentRunResults: View {
   }
 }
 
+struct CopyableAddress: View {
+  @EnvironmentObject private var model: AppModel
+  let email: String
+
+  init(_ email: String) {
+    self.email = email
+  }
+
+  var body: some View {
+    HStack {
+      Text(email)
+        .font(.system(.body, design: .monospaced))
+        .textSelection(.enabled)
+        .lineLimit(1)
+      Spacer()
+      Button { model.copy(email) } label: {
+        Image(systemName: "doc.on.doc")
+      }
+      .buttonStyle(.borderless)
+      .help("Copy address")
+      .accessibilityLabel("Copy \(email)")
+    }
+  }
+}
+
+struct CountBadge: View {
+  let title: String
+  let count: Int
+  let color: Color
+
+  var body: some View {
+    HStack(spacing: 6) {
+      Circle()
+        .fill(color)
+        .frame(width: 7, height: 7)
+      Text(title)
+        .foregroundStyle(.secondary)
+      Text("\(count)")
+        .fontWeight(.semibold)
+        .monospacedDigit()
+    }
+    .font(.caption)
+    .padding(.horizontal, 9)
+    .padding(.vertical, 5)
+    .background(color.opacity(0.08), in: Capsule())
+  }
+}
+
+struct StatusPill: View {
+  let title: String
+  let color: Color
+
+  var body: some View {
+    Text(title)
+      .font(.caption.weight(.semibold))
+      .foregroundStyle(color)
+      .padding(.horizontal, 8)
+      .padding(.vertical, 4)
+      .background(color.opacity(0.1), in: Capsule())
+  }
+}
+
+struct EmptyState: View {
+  let icon: String
+  let title: String
+  let message: String
+
+  var body: some View {
+    VStack(spacing: 8) {
+      Image(systemName: icon)
+        .font(.system(size: 30))
+        .foregroundStyle(.secondary)
+      Text(title)
+        .font(.headline)
+      Text(message)
+        .foregroundStyle(.secondary)
+        .multilineTextAlignment(.center)
+    }
+    .padding(24)
+  }
+}
+
+struct AccountPopover: View {
+  @EnvironmentObject private var model: AppModel
+  @State private var confirmingSignOut = false
+
+  var body: some View {
+    if let session = model.session {
+      VStack(alignment: .leading, spacing: 14) {
+        HStack(spacing: 10) {
+          Image(systemName: "checkmark.icloud.fill")
+            .font(.title2)
+            .symbolRenderingMode(.palette)
+            .foregroundStyle(.white, .blue)
+          VStack(alignment: .leading, spacing: 2) {
+            Text(session.account.name)
+              .font(.headline)
+            Text(session.account.appleID)
+              .foregroundStyle(.secondary)
+              .textSelection(.enabled)
+          }
+          Spacer()
+          if model.isManaging {
+            ProgressView()
+              .controlSize(.small)
+          }
+        }
+
+        Divider()
+
+        Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 8) {
+          accountRow("Region", session.region.title)
+          accountRow(
+            "Hide My Email",
+            session.account.hideMyEmailAvailable ? "Available" : "Unavailable"
+          )
+          accountRow(
+            "Partition",
+            session.account.userPartition.map(String.init) ?? "Unknown"
+          )
+          accountRow("Maildomain", session.account.maildomainHost)
+          if let dsid = session.account.dsid, !dsid.isEmpty {
+            accountRow("DSID", "••••\(dsid.suffix(4))")
+          }
+        }
+        .font(.subheadline)
+
+        if let error = model.managementError {
+          Text(error)
+            .font(.caption)
+            .foregroundStyle(.red)
+        }
+
+        Divider()
+
+        HStack {
+          Button("Refresh") { model.refreshAccount() }
+            .disabled(model.isManaging)
+          Button("Reconnect") { model.reconnect() }
+          Spacer()
+          Button("Sign Out", role: .destructive) {
+            confirmingSignOut = true
+          }
+        }
+      }
+      .padding(16)
+      .frame(width: 350)
+      .confirmationDialog(
+        "Would you like to sign out?",
+        isPresented: $confirmingSignOut,
+        titleVisibility: .visible
+      ) {
+        Button("Sign Out", role: .destructive) { model.signOut() }
+        Button("Cancel", role: .cancel) {}
+      } message: {
+        Text("This removes the saved iCloud session cookie from this Mac.")
+      }
+    }
+  }
+
+  @ViewBuilder
+  private func accountRow(_ title: String, _ value: String) -> some View {
+    GridRow {
+      Text(title)
+        .foregroundStyle(.secondary)
+      Text(value)
+        .textSelection(.enabled)
+    }
+  }
+}
+
 struct MessageBanner: View {
   let message: String
   let color: Color
@@ -622,6 +1280,23 @@ struct MessageBanner: View {
     .padding(11)
     .background(color.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
   }
+}
+
+func stateColor(_ state: AddressState) -> Color {
+  switch state {
+  case .unused: .blue
+  case .used: .green
+  case .trash: .secondary
+  }
+}
+
+func compactTimestamp(_ value: String) -> String {
+  guard !value.isEmpty else { return "—" }
+  let formatter = ISO8601DateFormatter()
+  guard let date = formatter.date(from: value) else {
+    return value.replacingOccurrences(of: "T", with: " ").prefix(16).description
+  }
+  return date.formatted(date: .abbreviated, time: .shortened)
 }
 
 struct SignInSheet: View {
