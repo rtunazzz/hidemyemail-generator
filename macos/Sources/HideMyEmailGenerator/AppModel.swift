@@ -815,11 +815,13 @@ final class AppModel: ObservableObject {
   @Published private(set) var isManaging = false
   @Published private(set) var managementError: String?
   @Published private(set) var managementNotice: String?
-  @Published var inboxSettings = InboxSettingsStore.load()
-  @Published var inboxPassword = (try? InboxPasswordStore.load()) ?? ""
+  @Published var inboxSettings: InboxSettings
+  @Published var inboxPassword: String
 
   private var client: CLIClient?
   private var managementClient: CLIClient?
+  private var savedInboxSettings: InboxSettings
+  private var savedInboxPassword: String
   private let historyURL: URL?
   private var generationTask: Task<Void, Never>?
   private var runTarget = 0
@@ -830,8 +832,14 @@ final class AppModel: ObservableObject {
   init(
     client: CLIClient? = nil,
     managementClient: CLIClient? = nil,
-    historyURL: URL? = nil
+    historyURL: URL? = nil,
+    inboxSettings: InboxSettings = InboxSettingsStore.load(),
+    inboxPassword: String = (try? InboxPasswordStore.load()) ?? ""
   ) {
+    self.inboxSettings = inboxSettings
+    self.inboxPassword = inboxPassword
+    savedInboxSettings = inboxSettings
+    savedInboxPassword = inboxPassword
     self.historyURL = historyURL ?? (try? EmailHistoryStore.defaultURL())
     session = try? KeychainSessionStore.load()
     signInRegion = session?.region ?? .global
@@ -885,7 +893,7 @@ final class AppModel: ObservableObject {
   }
 
   var hasInboxConfiguration: Bool {
-    inboxSettings.isComplete && !inboxPassword.isEmpty
+    savedInboxSettings.isComplete && !savedInboxPassword.isEmpty
   }
 
   var verificationCodes: [InboxMessage] {
@@ -1042,6 +1050,8 @@ final class AppModel: ObservableObject {
     do {
       try InboxSettingsStore.save(inboxSettings)
       try InboxPasswordStore.save(inboxPassword)
+      savedInboxSettings = inboxSettings
+      savedInboxPassword = inboxPassword
       managementNotice = "Inbox settings saved securely."
       managementError = nil
       refreshInbox()
@@ -1055,14 +1065,16 @@ final class AppModel: ObservableObject {
     InboxSettingsStore.delete()
     inboxSettings = InboxSettings()
     inboxPassword = ""
+    savedInboxSettings = inboxSettings
+    savedInboxPassword = inboxPassword
     inboxStatus = nil
     managementNotice = "Inbox credentials removed. Local messages were kept."
     managementError = nil
   }
 
   func refreshInbox() {
-    let settings = inboxSettings
-    let password = inboxPassword
+    let settings = savedInboxSettings
+    let password = savedInboxPassword
     manage { [weak self] client in
       let messages = try await client.inboxMessages()
       guard messages.ok else {
@@ -1085,8 +1097,8 @@ final class AppModel: ObservableObject {
       managementError = "Configure the inbox before syncing."
       return
     }
-    let settings = inboxSettings
-    let password = inboxPassword
+    let settings = savedInboxSettings
+    let password = savedInboxPassword
     manage { [weak self] client in
       let result = try await client.syncInbox(settings: settings, password: password)
       guard result.ok else {

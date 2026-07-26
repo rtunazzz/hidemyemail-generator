@@ -48,6 +48,26 @@ final class HideMyEmailGeneratorTests: XCTestCase {
     XCTAssertNil(result.account?.dsid)
   }
 
+  @MainActor
+  func testInboxDraftRequiresExplicitSave() {
+    let model = AppModel(
+      historyURL: URL(fileURLWithPath: "/dev/null"),
+      inboxSettings: InboxSettings(),
+      inboxPassword: ""
+    )
+
+    model.inboxSettings = InboxSettings(
+      host: "imap.example.com",
+      port: 993,
+      username: "user@example.com",
+      folder: "INBOX",
+      useSSL: true
+    )
+    model.inboxPassword = "draft-password"
+
+    XCTAssertFalse(model.hasInboxConfiguration)
+  }
+
   func testDecodesRateLimitResult() throws {
     let data = Data(
       """
