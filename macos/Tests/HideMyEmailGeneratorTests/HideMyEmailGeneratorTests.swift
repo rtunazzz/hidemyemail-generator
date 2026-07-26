@@ -131,6 +131,15 @@ final class HideMyEmailGeneratorTests: XCTestCase {
     XCTAssertEqual(attributes[.posixPermissions] as? NSNumber, NSNumber(value: 0o600))
   }
 
+  func testProcessWithLargeOutputCompletes() async throws {
+    let runner = ProcessRunner()
+    let status = try await runner.run(
+      executable: URL(fileURLWithPath: "/bin/sh"),
+      arguments: ["-c", "head -c 1000000 /dev/zero"]
+    )
+    XCTAssertEqual(status, 0)
+  }
+
   func testProcessCancellationTerminatesHelper() async throws {
     let runner = ProcessRunner()
     let task = Task {
