@@ -21,6 +21,8 @@
   <a href="./README.md">English</a>
   ·
   <strong>简体中文</strong>
+  ·
+  <a href="./README.ru.md">Русский</a>
 </p>
 
 > 需要有效的 iCloud+ 订阅，才能生成「隐藏邮件地址」。
