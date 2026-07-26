@@ -19,14 +19,11 @@ jobs:
           python-version: "3.12"
           enable-cache: true
 
-      - name: Validate version and signing key
-        env:
-          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+      - name: Validate version
         shell: bash
         run: |
           version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' pyproject.toml | head -1)"
           test "${GITHUB_REF_NAME}" = "v${version}"
-          test -n "${SPARKLE_PRIVATE_KEY}"
 
       - name: Test CLI
         env:
@@ -63,6 +60,7 @@ jobs:
 
   macos:
     needs: validate
+    environment: release
     strategy:
       fail-fast: false
       matrix:
@@ -110,7 +108,7 @@ jobs:
           test -x "$app/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist")" = "$version"
           test "$(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' "$plist")" \
-            = "KjzTPT1ZjrInPL792a1lm9r5e/n0fyaQgsnOvkLMLCM="
+            = "CTtQVjKq6ytg65Ntiv3WLuwMljBcPqW0YB1ep0VLkJw="
           /usr/libexec/PlistBuddy -c 'Print :SUFeedURL' "$plist" \
             | grep -Fq "appcast-${{ matrix.arch }}.xml"
           test "$(lipo -archs "$app/Contents/MacOS/HideMyEmailGenerator")" \

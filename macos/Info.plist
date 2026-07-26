@@ -37,7 +37,7 @@
 	<key>SUFeedURL</key>
 	<string>https://github.com/rtunazzz/hidemyemail-generator/releases/latest/download/appcast-arm64.xml</string>
 	<key>SUPublicEDKey</key>
-	<string>KjzTPT1ZjrInPL792a1lm9r5e/n0fyaQgsnOvkLMLCM=</string>
+	<string>CTtQVjKq6ytg65Ntiv3WLuwMljBcPqW0YB1ep0VLkJw=</string>
 	<key>SUSendProfileInfo</key>
 	<false/>
 </dict>
