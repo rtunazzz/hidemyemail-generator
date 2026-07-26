@@ -6,10 +6,34 @@ on:
       - "v*"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Validate version
+        shell: bash
+        run: |
+          version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' pyproject.toml | head -1)"
+          test "${GITHUB_REF_NAME}" = "v${version}"
+
+      - name: Test CLI
+        env:
+          PYTHONPATH: src
+        run: |
+          uv run --frozen pytest -q
+          uv run --frozen ruff check
+
   windows:
+    needs: validate
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,12 +52,14 @@ jobs:
           --icon docs/icon.ico
           src/hidemyemail_generator/__main__.py
 
-      - name: Attach binary to release
-        uses: softprops/action-gh-release@v2
+      - uses: actions/upload-artifact@v4
         with:
-          files: dist/hidemyemail-windows.exe
+          name: release-windows
+          path: dist/hidemyemail-windows.exe
+          if-no-files-found: error
 
   macos:
+    needs: validate
     strategy:
       fail-fast: false
       matrix:
@@ -56,16 +82,161 @@ jobs:
           enable-cache: true
 
       - name: Build CLI and app
-        shell: bash
         run: |
           scripts/build-macos-app.sh "${{ matrix.arch }}"
           cp "build/macos-app-${{ matrix.arch }}/helper/hidemyemail" \
             "dist/${{ matrix.cli_asset }}"
 
-      - name: Attach macOS assets to release
-        uses: softprops/action-gh-release@v2
+      - name: Test app
+        run: |
+          cd macos
+          xcodebuild test \
+            -scheme HideMyEmailGenerator \
+            -destination "platform=macOS,arch=${{ matrix.arch }}" \
+            -derivedDataPath "$PWD/../build/macos-app-${{ matrix.arch }}/xcode" \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Validate app bundle
+        shell: bash
+        run: |
+          app="build/macos-app-${{ matrix.arch }}/HideMyEmail Generator.app"
+          plist="$app/Contents/Info.plist"
+          version="${GITHUB_REF_NAME#v}"
+
+          test -x "$app/Contents/Resources/hidemyemail"
+          test -x "$app/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist")" = "$version"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' "$plist")" \
+            = "CTtQVjKq6ytg65Ntiv3WLuwMljBcPqW0YB1ep0VLkJw="
+          /usr/libexec/PlistBuddy -c 'Print :SUFeedURL' "$plist" \
+            | grep -Fq "appcast-${{ matrix.arch }}.xml"
+          test "$(lipo -archs "$app/Contents/MacOS/HideMyEmailGenerator")" \
+            = "${{ matrix.arch }}"
+          test "$(lipo -archs "$app/Contents/Resources/hidemyemail")" \
+            = "${{ matrix.arch }}"
+          lipo -archs "$app/Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle" \
+            | grep -Fqw "${{ matrix.arch }}"
+
+      - name: Stage unsigned release
+        shell: bash
+        run: |
+          stage="build/unsigned-${{ matrix.arch }}"
+          tools="build/macos-app-${{ matrix.arch }}/xcode/SourcePackages/artifacts/sparkle/Sparkle/bin"
+          mkdir -p "$stage"
+          cp \
+            "dist/${{ matrix.cli_asset }}" \
+            "dist/HideMyEmail-Generator-macOS-${{ matrix.app_label }}.zip" \
+            "dist/HideMyEmail-Generator-macOS-${{ matrix.app_label }}.dmg" \
+            "$stage/"
+          cp -R "$tools" "$stage/tools"
+
+      - uses: actions/upload-artifact@v4
         with:
-          files: |
+          name: unsigned-macos-${{ matrix.arch }}
+          path: build/unsigned-${{ matrix.arch }}/
+          if-no-files-found: error
+
+  sign:
+    needs: macos
+    environment: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+            cli_asset: hidemyemail-macos
+            app_label: Apple-Silicon
+          - runner: macos-15-intel
+            arch: x86_64
+            cli_asset: hidemyemail-macos-x86_64
+            app_label: Intel
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: unsigned-macos-${{ matrix.arch }}
+          path: unsigned
+
+      - name: Generate signed appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          updates="build/appcast-${{ matrix.arch }}"
+          archive="HideMyEmail-Generator-macOS-${{ matrix.app_label }}.zip"
+          tools="unsigned/tools"
+          chmod +x \
+            "$tools/BinaryDelta" \
+            "$tools/generate_appcast" \
+            "$tools/sign_update"
+          mkdir -p "$updates" dist
+          cp "unsigned/$archive" "$updates/$archive"
+
+          printf '%s' "$SPARKLE_PRIVATE_KEY" \
+            | "$tools/generate_appcast" \
+                --ed-key-file - \
+                --download-url-prefix \
+                  "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/" \
+                --link "https://github.com/${GITHUB_REPOSITORY}" \
+                --maximum-deltas 0 \
+                -o "$updates/appcast-${{ matrix.arch }}.xml" \
+                "$updates"
+
+          cp "$updates/appcast-${{ matrix.arch }}.xml" dist/
+          appcast="dist/appcast-${{ matrix.arch }}.xml"
+          signature="$(sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p' "$appcast")"
+          test -n "$signature"
+          grep -Fq "/releases/download/${GITHUB_REF_NAME}/$archive" \
+            "$appcast"
+          printf '%s' "$SPARKLE_PRIVATE_KEY" \
+            | "$tools/sign_update" --verify --ed-key-file - \
+                "$updates/$archive" "$signature"
+
+          invalid_signature="${signature%?}A"
+          if printf '%s' "$SPARKLE_PRIVATE_KEY" \
+            | "$tools/sign_update" --verify --ed-key-file - \
+                "$updates/$archive" "$invalid_signature" >/dev/null 2>&1; then
+            echo "Sparkle accepted an invalid update signature." >&2
+            exit 1
+          fi
+
+          cp \
+            "unsigned/${{ matrix.cli_asset }}" \
+            "unsigned/HideMyEmail-Generator-macOS-${{ matrix.app_label }}.zip" \
+            "unsigned/HideMyEmail-Generator-macOS-${{ matrix.app_label }}.dmg" \
+            dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-${{ matrix.arch }}
+          path: |
             dist/${{ matrix.cli_asset }}
             dist/HideMyEmail-Generator-macOS-${{ matrix.app_label }}.zip
             dist/HideMyEmail-Generator-macOS-${{ matrix.app_label }}.dmg
+            dist/appcast-${{ matrix.arch }}.xml
+          if-no-files-found: error
+
+  release:
+    needs: [windows, sign]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Validate release assets
+        run: |
+          test "$(find release-assets -maxdepth 1 -type f | wc -l)" -eq 9
+          test -f release-assets/appcast-arm64.xml
+          test -f release-assets/appcast-x86_64.xml
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          fail_on_unmatched_files: true
+          generate_release_notes: true

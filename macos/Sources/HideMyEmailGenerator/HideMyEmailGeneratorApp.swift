@@ -1,14 +1,97 @@
 import AppKit
+@preconcurrency import Sparkle
 import SwiftUI
+
+enum UpdateStatus {
+  case checking
+  case current
+  case available
+  case unavailable
+
+  var systemImage: String {
+    self == .available ? "arrow.down.circle.fill" : "arrow.down.circle"
+  }
+
+  var help: String {
+    switch self {
+    case .checking:
+      "Checking for updates…"
+    case .current:
+      "Check for Updates…"
+    case .available:
+      "An update is available. Click to review it."
+    case .unavailable:
+      "Unable to check for updates. Click to try again."
+    }
+  }
+}
+
+@MainActor
+final class UpdateController: NSObject, ObservableObject, SPUUpdaterDelegate,
+  SPUStandardUserDriverDelegate
+{
+  @Published private(set) var status = UpdateStatus.checking
+
+  private lazy var controller = SPUStandardUpdaterController(
+    startingUpdater: true,
+    updaterDelegate: self,
+    userDriverDelegate: self
+  )
+
+  override init() {
+    super.init()
+    controller.updater.checkForUpdatesInBackground()
+  }
+
+  func checkForUpdates() {
+    status = .checking
+    controller.checkForUpdates(nil)
+  }
+
+  func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
+    status = .available
+  }
+
+  func updaterDidNotFindUpdate(_ updater: SPUUpdater) {
+    status = .current
+  }
+
+  func updater(_ updater: SPUUpdater, didAbortWithError error: any Error) {
+    status = .unavailable
+  }
+
+  nonisolated var supportsGentleScheduledUpdateReminders: Bool { true }
+
+  nonisolated func standardUserDriverShouldHandleShowingScheduledUpdate(
+    _ update: SUAppcastItem,
+    andInImmediateFocus immediateFocus: Bool
+  ) -> Bool {
+    false
+  }
+
+  nonisolated func standardUserDriverWillHandleShowingUpdate(
+    _ handleShowingUpdate: Bool,
+    forUpdate update: SUAppcastItem,
+    state: SPUUserUpdateState
+  ) {
+    if !handleShowingUpdate {
+      Task { @MainActor [weak self] in
+        self?.status = .available
+      }
+    }
+  }
+}
 
 @main
 struct HideMyEmailGeneratorApp: App {
   @StateObject private var model = AppModel()
+  @StateObject private var updater = UpdateController()
 
   var body: some Scene {
     WindowGroup {
       ContentView()
         .environmentObject(model)
+        .environmentObject(updater)
         .frame(minWidth: 640, minHeight: 420)
     }
     .defaultSize(width: 850, height: 540)
@@ -40,6 +123,7 @@ enum AppSection: String, CaseIterable, Identifiable {
 
 struct ContentView: View {
   @EnvironmentObject private var model: AppModel
+  @EnvironmentObject private var updater: UpdateController
   @State private var selection = AppSection.generate
   @State private var isConfirmingSignOut = false
 
@@ -53,15 +137,22 @@ struct ContentView: View {
         .listStyle(.sidebar)
 
         Divider()
-        Label {
+        HStack(spacing: 8) {
           Text("No telemetry collected")
             .foregroundStyle(.secondary)
-        } icon: {
-          Image(systemName: "lock.shield.fill")
-            .foregroundStyle(.blue)
+
+          Spacer(minLength: 4)
+
+          Button { updater.checkForUpdates() } label: {
+            Image(systemName: updater.status.systemImage)
+              .foregroundStyle(updater.status == .available ? .green : .secondary)
+          }
+          .buttonStyle(.plain)
+          .help(updater.status.help)
+          .accessibilityLabel(updater.status.help)
         }
-          .font(.caption)
-          .padding(12)
+        .font(.caption)
+        .padding(12)
       }
       .navigationSplitViewColumnWidth(min: 160, ideal: 180, max: 220)
     } detail: {

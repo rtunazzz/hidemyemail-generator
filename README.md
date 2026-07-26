@@ -177,6 +177,19 @@ The script builds one exact architecture and refuses cross-architecture
 packaging. Run it on Apple Silicon for the Apple Silicon app and on an Intel
 Mac (or the matching GitHub runner) for the Intel app.
 
+### Releasing
+
+macOS updates use Sparkle and are published only from version tags. The
+verification public key is embedded in `macos/Info.plist`.
+
+1. Bump the version in `pyproject.toml`, `uv.lock`, and `macos/Info.plist`.
+2. Merge the tested change to `main`.
+3. Tag that commit with the matching `v`-prefixed version, such as `v2.1.0`.
+
+The release workflow rejects mismatched tags or a missing signing key, builds
+both Mac architectures, signs their appcasts, and publishes only after every
+artifact passes.
+
 ## Windows Launcher
 
 The Windows launcher is the recommended entry point for Windows users.

@@ -4,8 +4,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ARCH="${1:-$(uname -m)}"
 case "$ARCH" in
-  arm64) ARCH_LABEL="Apple-Silicon" ;;
-  x86_64) ARCH_LABEL="Intel" ;;
+  arm64)
+    ARCH_LABEL="Apple-Silicon"
+    DEFAULT_FEED_URL="https://github.com/rtunazzz/hidemyemail-generator/releases/latest/download/appcast-arm64.xml"
+    ;;
+  x86_64)
+    ARCH_LABEL="Intel"
+    DEFAULT_FEED_URL="https://github.com/rtunazzz/hidemyemail-generator/releases/latest/download/appcast-x86_64.xml"
+    ;;
   *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;
 esac
 if [[ "$(uname -m)" != "$ARCH" ]]; then
@@ -21,6 +27,7 @@ if [[ -z "${DEVELOPER_DIR:-}" ]]; then
   fi
 fi
 VERSION="${VERSION:-$(sed -n 's/^version = "\([^"]*\)"/\1/p' "$ROOT/pyproject.toml" | head -1)}"
+SPARKLE_FEED_URL="${SPARKLE_FEED_URL:-$DEFAULT_FEED_URL}"
 BUILD_ROOT="$ROOT/build/macos-app-$ARCH"
 APP="$BUILD_ROOT/HideMyEmail Generator.app"
 ASSET_BASE="$ROOT/dist/HideMyEmail-Generator-macOS-$ARCH_LABEL"
@@ -54,10 +61,14 @@ DEVELOPER_DIR="$DEVELOPER_DIR" xcodebuild \
   CODE_SIGNING_ALLOWED=NO \
   build
 
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+SPARKLE_FRAMEWORK="$BUILD_ROOT/xcode/Build/Products/Release/Sparkle.framework"
+test -d "$SPARKLE_FRAMEWORK"
+
+mkdir -p "$APP/Contents/Frameworks" "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BUILD_ROOT/xcode/Build/Products/Release/HideMyEmailGenerator" \
   "$APP/Contents/MacOS/HideMyEmailGenerator"
 cp "$BUILD_ROOT/helper/hidemyemail" "$APP/Contents/Resources/hidemyemail"
+ditto "$SPARKLE_FRAMEWORK" "$APP/Contents/Frameworks/Sparkle.framework"
 cp "$ROOT/macos/Info.plist" "$APP/Contents/Info.plist"
 DEVELOPER_DIR="$DEVELOPER_DIR" xcrun actool \
   --compile "$APP/Contents/Resources" \
@@ -77,6 +88,7 @@ chmod 755 "$APP/Contents/MacOS/HideMyEmailGenerator" "$APP/Contents/Resources/hi
 
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$APP/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :SUFeedURL $SPARKLE_FEED_URL" "$APP/Contents/Info.plist"
 
 for binary in \
   "$APP/Contents/MacOS/HideMyEmailGenerator" \
@@ -86,6 +98,19 @@ for binary in \
     exit 1
   fi
 done
+
+test -x "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate"
+if ! otool -l "$APP/Contents/MacOS/HideMyEmailGenerator" \
+  | grep -A2 LC_RPATH \
+  | grep -Fq '@executable_path/../Frameworks'; then
+  echo "The app executable cannot load its bundled Sparkle framework." >&2
+  exit 1
+fi
+
+# Sparkle requires a structurally valid bundle signature. This identity-free
+# signature carries no Apple team and leaves release trust to the EdDSA key.
+codesign --force --sign - "$APP"
+codesign --verify --deep --strict "$APP"
 
 for artifact in \
   "$APP" \
