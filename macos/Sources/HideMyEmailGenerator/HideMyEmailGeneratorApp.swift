@@ -921,6 +921,7 @@ struct InboxSettingsPanel: View {
         .opacity(canSave ? 1 : 0.45)
         Spacer()
       }
+      .frame(maxWidth: .infinity)
       .overlay(alignment: .leading) {
         if model.hasInboxConfiguration {
           Button("Remove Credentials", role: .destructive) {
