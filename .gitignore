@@ -1,6 +1,8 @@
 **/__pycache__
 venv/
 .venv/
+.build/
+.swiftpm/
 .cookie-browser-profile/
 build/
 dist/

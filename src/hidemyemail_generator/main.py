@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import datetime
+import json
 import os
 import shutil
 import sys
@@ -54,6 +55,68 @@ HIDEMYEMAIL_APP_PATH = "/applications/hidemyemail/current/"
 
 def maildomain_suffix(region: str) -> str:
     return "com.cn" if region == "china" else "com"
+
+
+def bridge_error(response: dict | None) -> dict:
+    if not response:
+        return {"code": None, "message": "Empty response from iCloud", "retry_after": None}
+
+    error = response.get("error")
+    if isinstance(error, dict):
+        code = error.get("errorCode")
+        if code is None:
+            code = error.get("code")
+        message = (
+            error.get("errorMessage")
+            or error.get("message")
+            or response.get("reason")
+            or "Unknown error"
+        )
+        retry_after = error.get("retryAfter")
+    else:
+        code = error if isinstance(error, int) else None
+        message = response.get("reason") or str(error or "Unknown error")
+        retry_after = response.get("retryAfter")
+
+    return {
+        "code": str(code) if code is not None else None,
+        "message": str(message),
+        "retry_after": retry_after if isinstance(retry_after, (int, float)) else None,
+    }
+
+
+def write_result_json(result_file: str | None, payload: dict) -> None:
+    if result_file:
+        Path(result_file).write_text(
+            json.dumps(payload, ensure_ascii=False), encoding="utf-8"
+        )
+
+
+def account_summary(account: dict) -> dict:
+    ds_info = account.get("dsInfo", {})
+    full_name = ds_info.get("fullName") or " ".join(
+        part for part in [ds_info.get("firstName"), ds_info.get("lastName")] if part
+    )
+    maildomain = account.get("webservices", {}).get("maildomainws", {})
+    maildomain_host = (
+        account.get("detectedMaildomainHost") or maildomain.get("url") or ""
+    )
+    maildomain_host = re.sub(r"^https?://", "", maildomain_host).split("/", 1)[0]
+    user_partition = account.get("userPartition")
+    try:
+        user_partition = int(user_partition) if user_partition is not None else None
+    except (TypeError, ValueError):
+        user_partition = None
+
+    return {
+        "apple_id": ds_info.get("appleId") or "Unknown",
+        "name": full_name or "Unknown",
+        "user_partition": user_partition,
+        "maildomain_host": maildomain_host,
+        "hide_my_email_available": bool(
+            ds_info.get("isHideMyEmailFeatureAvailable")
+        ),
+    }
 
 
 def load_cookie_context(cookie_file: str, region: str) -> tuple[str, str]:
@@ -214,6 +277,7 @@ class RichHideMyEmail(HideMyEmail):
         self.table = Table()
         self._output_file = output_file
         self._no_output_file = no_output_file
+        self.last_error = None
 
         if not os.path.exists(cookie_file):
             self.console.log(
@@ -228,17 +292,13 @@ class RichHideMyEmail(HideMyEmail):
         self, response: dict, action: str, email: Optional[str] = None
     ) -> bool:
         if not response:
+            self.last_error = bridge_error(response)
             return False
         if "success" not in response or not response["success"]:
-            error = response.get("error", {})
-            err_msg = "Unknown"
-            if isinstance(error, int) and "reason" in response:
-                err_msg = response["reason"]
-            elif isinstance(error, dict) and "errorMessage" in error:
-                err_msg = error["errorMessage"]
+            self.last_error = bridge_error(response)
             email_prefix = f' "{email}"' if email else ""
             self.console.log(
-                f"[bold red][ERR][/]{email_prefix} - Failed to {action}. 失败原因: {err_msg}"
+                f"[bold red][ERR][/]{email_prefix} - Failed to {action}. 失败原因: {self.last_error['message']}"
             )
             return False
         return True
@@ -272,9 +332,15 @@ class RichHideMyEmail(HideMyEmail):
 
     async def generate(self, label: str, count: int) -> List[str]:
         try:
+            self.last_error = None
             emails = []
             self.console.rule()
             if count < 1:
+                self.last_error = {
+                    "code": None,
+                    "message": "Count should be >= 1",
+                    "retry_after": None,
+                }
                 self.console.log("Count should be >= 1 / 数量必须大于等于 1")
                 return emails
             self.console.log(f"Generating {count} email(s)... / 正在生成 {count} 个邮箱...")
@@ -383,6 +449,11 @@ def cli():
     default=False,
     help="Do not save generated addresses to the local inbox database / 不写入本地数据库",
 )
+@click.option(
+    "--result-json",
+    type=click.Path(dir_okay=False),
+    help="Write a machine-readable result to this file",
+)
 def generatecommand(
     count: int,
     label: str,
@@ -392,16 +463,21 @@ def generatecommand(
     region: str,
     db_file: str,
     no_db: bool,
+    result_json: Optional[str],
 ):
     "Generate emails / 生成隐藏邮箱"
     try:
-        asyncio.run(
+        result = asyncio.run(
             _generate(
                 label, count, cookie_file, output, no_output_file, region, db_file, no_db
             )
         )
     except KeyboardInterrupt:
-        pass
+        return
+
+    write_result_json(result_json, result)
+    if result_json and not result["ok"]:
+        raise click.ClickException(result["error"]["message"])
 
 
 @click.command()
@@ -447,14 +523,20 @@ def listcommand(label_query: Optional[str], active: bool, cookie_file: str, regi
     type=REGION_CHOICE,
     help="iCloud region to use / iCloud 区域",
 )
-def whoamicommand(cookie_file: str, region: str):
+@click.option(
+    "--result-json",
+    type=click.Path(dir_okay=False),
+    help="Write a machine-readable result to this file",
+)
+def whoamicommand(cookie_file: str, region: str, result_json: Optional[str]):
     "Show the account represented by the saved cookie / 查看当前 Cookie 对应账号"
     try:
-        ok = asyncio.run(_whoami(cookie_file, region))
+        result = asyncio.run(_whoami(cookie_file, region))
     except KeyboardInterrupt:
         return
 
-    if not ok:
+    write_result_json(result_json, result)
+    if not result["ok"]:
         raise click.ClickException("Could not identify the saved iCloud cookie")
 
 
@@ -769,7 +851,7 @@ async def _generate(
     region: str = DEFAULT_REGION,
     db_file: str = DEFAULT_DB_FILE,
     no_db: bool = False,
-) -> None:
+) -> dict:
     async with RichHideMyEmail(
         cookie_file=cookie_file,
         output_file=output_file,
@@ -793,6 +875,15 @@ async def _generate(
         finally:
             conn.close()
 
+    return {
+        "ok": len(emails) == count,
+        "emails": emails,
+        "error": None
+        if len(emails) == count
+        else hme.last_error
+        or {"code": None, "message": "Generation failed", "retry_after": None},
+    }
+
 
 async def _list(
     label_query: Optional[str],
@@ -804,45 +895,50 @@ async def _list(
         await hme.list(label_query, active)
 
 
-async def _whoami(cookie_file: str, region: str = DEFAULT_REGION) -> bool:
+async def _whoami(cookie_file: str, region: str = DEFAULT_REGION) -> dict:
     console = Console()
     if not os.path.exists(cookie_file):
-        console.log(f'[bold red][ERR][/] No "{cookie_file}" file found')
-        return False
+        message = f'No "{cookie_file}" file found'
+        console.log(f"[bold red][ERR][/] {message}")
+        return {
+            "ok": False,
+            "account": None,
+            "error": {"code": None, "message": message, "retry_after": None},
+        }
 
     account = await fetch_account_info(cookie_file, region)
     if "error" in account:
         console.log(f"[bold red][ERR][/] {account['error']}")
-        return False
+        return {
+            "ok": False,
+            "account": None,
+            "error": {
+                "code": None,
+                "message": account["error"],
+                "retry_after": None,
+            },
+        }
 
-    ds_info = account.get("dsInfo", {})
-    full_name = ds_info.get("fullName") or " ".join(
-        part for part in [ds_info.get("firstName"), ds_info.get("lastName")] if part
-    )
-    webservices = account.get("webservices", {})
-    maildomain = webservices.get("maildomainws", {})
-
+    summary = account_summary(account)
     table = Table(title="Current iCloud Cookie / 当前 iCloud Cookie", show_header=False)
     table.add_column("Field / 字段")
     table.add_column("Value / 值")
-    table.add_row("Apple ID", ds_info.get("appleId") or "Unknown")
-    table.add_row("Name / 名称", full_name or "Unknown")
-    table.add_row("DSID", str(ds_info.get("dsid") or "Unknown"))
+    table.add_row("Apple ID", summary["apple_id"])
+    table.add_row("Name / 名称", summary["name"])
+    table.add_row("DSID", str(account.get("dsInfo", {}).get("dsid") or "Unknown"))
     table.add_row(
         "Hide My Email / 隐藏邮箱",
-        "Available"
-        if ds_info.get("isHideMyEmailFeatureAvailable")
-        else "Unavailable or unknown",
+        "Available" if summary["hide_my_email_available"] else "Unavailable or unknown",
     )
-    table.add_row("User Partition / 用户分区", str(account.get("userPartition") or "Unknown"))
+    table.add_row(
+        "User Partition / 用户分区", str(summary["user_partition"] or "Unknown")
+    )
     table.add_row(
         "Maildomain",
-        account.get("detectedMaildomainHost")
-        or maildomain.get("url")
-        or "Default",
+        summary["maildomain_host"] or "Default",
     )
     console.print(table)
-    return True
+    return {"ok": True, "account": summary, "error": None}
 
 
 def _print_messages(db_file: str, only_codes: bool, limit: int) -> None:
