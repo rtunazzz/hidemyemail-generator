@@ -4,7 +4,11 @@ from pathlib import Path
 
 import hidemyemail_generator.main as generator_main
 from hidemyemail_generator.hidemyemail import HideMyEmail
-from hidemyemail_generator.main import HIDEMYEMAIL_APP_PATH, load_cookie_context
+from hidemyemail_generator.main import (
+    HIDEMYEMAIL_APP_PATH,
+    RichHideMyEmail,
+    load_cookie_context,
+)
 
 
 class CookieContextTests(unittest.TestCase):
@@ -114,6 +118,49 @@ class CookieContextTests(unittest.TestCase):
 
             self.assertEqual(cookie, "")
             self.assertEqual(maildomain_host, "")
+
+    def test_recovers_china_region_and_shard_from_a_redirected_capture(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cookie_file = Path(tmpdir) / "cookies.txt"
+            cookie_file.write_text(
+                "HIDEMYEMAIL_REGION=global\n"
+                "HIDEMYEMAIL_REQUEST_URL=https://www.icloud.com.cn/"
+                "applications/hidemyemail/2626Build17/zh-cn/index.html?rootDomain=www\n"
+                "HIDEMYEMAIL_MAILDOMAIN_HOST=p217-maildomainws.icloud.com\n"
+                "Cookie: X-APPLE-WEBAUTH-USER=valid; session=valid\n",
+                encoding="utf-8",
+            )
+
+            self.assertTrue(
+                hasattr(generator_main, "resolve_cookie_region"),
+                "Expected the iCloud region to be resolved from the capture URL",
+            )
+            region = generator_main.resolve_cookie_region(str(cookie_file), "global")
+            cookie, maildomain_host = load_cookie_context(str(cookie_file), region)
+
+            self.assertEqual(region, "china")
+            self.assertEqual(cookie, "X-APPLE-WEBAUTH-USER=valid; session=valid")
+            self.assertEqual(maildomain_host, "p217-maildomainws.icloud.com.cn")
+
+    def test_client_uses_detected_china_region_from_cookie_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cookie_file = Path(tmpdir) / "cookies.txt"
+            cookie_file.write_text(
+                "HIDEMYEMAIL_REGION=global\n"
+                "HIDEMYEMAIL_REQUEST_URL=https://www.icloud.com.cn/"
+                "applications/hidemyemail/2626Build17/zh-cn/index.html?rootDomain=www\n"
+                "HIDEMYEMAIL_MAILDOMAIN_HOST=p217-maildomainws.icloud.com\n"
+                "Cookie: X-APPLE-WEBAUTH-USER=valid; session=valid\n",
+                encoding="utf-8",
+            )
+
+            client = RichHideMyEmail(str(cookie_file), region="global")
+
+            self.assertEqual(
+                client.base_url_v1,
+                "https://p217-maildomainws.icloud.com.cn/v1/hme",
+            )
+            self.assertEqual(client.generate_lang_code, "zh-cn")
 
 
 if __name__ == "__main__":

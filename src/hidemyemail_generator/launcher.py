@@ -114,10 +114,11 @@ def main_menu() -> None:
         print("2. List active emails / 查看使用中地址")
         print("3. List inactive emails / 查看已停用地址")
         print("4. Manage iCloud cookie / 管理 iCloud Cookie")
-        print("5. Local inbox and codes / 本地收件台和验证码")
-        print("6. Exit / 退出")
+        print("5. Manage Hide My Email addresses / 管理隐藏邮箱地址")
+        print("6. Local inbox and codes / 本地收件台和验证码")
+        print("7. Exit / 退出")
         print()
-        choice = input("Choose an option / 请选择 [1-6]: ").strip()
+        choice = input("Choose an option / 请选择 [1-7]: ").strip()
 
         if choice == "1":
             generate()
@@ -128,8 +129,10 @@ def main_menu() -> None:
         elif choice == "4":
             cookie_menu()
         elif choice == "5":
-            inbox_menu()
+            manage_hme_addresses()
         elif choice == "6":
+            inbox_menu()
+        elif choice == "7":
             return
 
 
@@ -172,6 +175,94 @@ def list_inactive() -> None:
     code = run_cli("list", "--inactive", "--cookie-file", COOKIE_FILE, "--region", REGION)
     if code:
         print("[ERROR] List inactive command failed / 查看已停用地址失败.")
+    pause()
+
+
+def manage_hme_addresses() -> None:
+    while True:
+        clear()
+        print("Manage Hide My Email addresses / 管理隐藏邮箱地址")
+        print()
+        print("1. Update label or note / 修改标签或备注")
+        print("2. Deactivate address / 停用地址")
+        print("3. Reactivate address / 重新启用地址")
+        print("4. Back / 返回")
+        print()
+        choice = input("Choose an option / 请选择 [1-4]: ").strip()
+
+        if choice == "1":
+            update_hme_address()
+        elif choice == "2":
+            deactivate_hme_address()
+        elif choice == "3":
+            reactivate_hme_address()
+        elif choice == "4":
+            return
+
+
+def update_hme_address() -> None:
+    if not ensure_cookies():
+        return
+
+    address = input("Address to update / 要修改的隐藏邮箱地址: ").strip()
+    if not address:
+        return
+    label = input("New label (blank keeps current) / 新标签（留空保留原值）: ").strip()
+    note = input(
+        "New note (blank keeps current; - clears it) / 新备注（留空保留；- 清空）: "
+    ).strip()
+    if not label and not note:
+        print("[INFO] Nothing to update / 未输入需要修改的内容.")
+        pause()
+        return
+
+    args = ["update", "--address", address]
+    if label:
+        args.extend(["--label", label])
+    if note == "-":
+        args.extend(["--note", ""])
+    elif note:
+        args.extend(["--note", note])
+    args.extend(["--cookie-file", COOKIE_FILE, "--region", REGION])
+    code = run_cli(*args)
+    if code:
+        print("[ERROR] Address update failed / 地址信息更新失败.")
+    pause()
+
+
+def deactivate_hme_address() -> None:
+    if not ensure_cookies():
+        return
+
+    address = input("Address to deactivate / 要停用的隐藏邮箱地址: ").strip()
+    if not address:
+        return
+    confirmation = input("Type YES to deactivate / 输入 YES 确认停用: ").strip()
+    if confirmation != "YES":
+        print("[INFO] Deactivation cancelled / 已取消停用.")
+        pause()
+        return
+
+    code = run_cli(
+        "deactivate", "--address", address, "--cookie-file", COOKIE_FILE, "--region", REGION
+    )
+    if code:
+        print("[ERROR] Could not deactivate address / 无法停用地址.")
+    pause()
+
+
+def reactivate_hme_address() -> None:
+    if not ensure_cookies():
+        return
+
+    address = input("Address to reactivate / 要重新启用的隐藏邮箱地址: ").strip()
+    if not address:
+        return
+    code = run_cli(
+        "reactivate", "--address", address, "--cookie-file", COOKIE_FILE, "--region", REGION
+    )
+    if code:
+        print("[ERROR] Could not reactivate address / 无法重新启用地址.")
     pause()
 
 

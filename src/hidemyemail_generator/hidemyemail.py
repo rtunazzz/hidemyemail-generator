@@ -132,3 +132,36 @@ class HideMyEmail:
         return await self._request_json(
             "GET", f"{self.base_url_v2}/list", params=self.params
         )
+
+    async def update_email_metadata(
+        self, anonymous_id: str, label: str, note: str
+    ) -> dict:
+        """Update the label and note for an existing Hide My Email address."""
+        return await self._request_json(
+            "POST",
+            f"{self.base_url_v1}/updateMetaData",
+            params=self.params,
+            json={
+                "anonymousId": anonymous_id,
+                "label": label,
+                "note": note,
+            },
+        )
+
+    async def deactivate_email(self, anonymous_id: str) -> dict:
+        """Deactivate an existing Hide My Email address."""
+        return await self._request_json(
+            "POST",
+            f"{self.base_url_v1}/deactivate",
+            params=self.params,
+            json={"anonymousId": anonymous_id},
+        )
+
+    async def reactivate_email(self, anonymous_id: str) -> dict:
+        """Reactivate an existing Hide My Email address."""
+        return await self._request_json(
+            "POST",
+            f"{self.base_url_v1}/reactivate",
+            params=self.params,
+            json={"anonymousId": anonymous_id},
+        )
