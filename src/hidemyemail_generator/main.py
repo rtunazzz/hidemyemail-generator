@@ -50,7 +50,7 @@ COOKIE_CAPTURE_URLS = {
     "global": "https://www.icloud.com/icloudplus/",
     "china": "https://www.icloud.com.cn/icloudplus/",
 }
-HIDEMYEMAIL_APP_PATH = "/applications/hidemyemail/current/"
+HIDEMYEMAIL_APP_PATH = "/applications/hidemyemail/"
 
 
 def maildomain_suffix(region: str) -> str:
@@ -120,7 +120,7 @@ def account_summary(account: dict) -> dict:
 
 
 def load_cookie_context(cookie_file: str, region: str) -> tuple[str, str]:
-    with open(cookie_file, "r") as f:
+    with open(cookie_file, "r", encoding="utf-8-sig", errors="replace") as f:
         content = "\n".join(
             line.strip() for line in f if not line.lstrip().startswith("//")
         ).strip()
@@ -186,7 +186,10 @@ def load_cookie_context(cookie_file: str, region: str) -> tuple[str, str]:
         return cookie_header.group(1).strip(), maildomain_host
 
     lines = normalized_content.splitlines()
-    return (lines[0].strip() if lines else ""), maildomain_host
+    raw_cookie = lines[0].strip() if lines else ""
+    if re.match(r"^[^=;\s]+=", raw_cookie):
+        return raw_cookie, maildomain_host
+    return "", maildomain_host
 
 
 async def fetch_account_info(cookie_file: str, region: str) -> dict:
