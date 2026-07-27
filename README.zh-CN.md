@@ -5,9 +5,9 @@
 <h1 align="center">HideMyEmail Generator</h1>
 
 <p align="center">
-  通过原生 macOS 应用或本地命令行生成、保留和管理 iCloud「隐藏邮件地址」。
+  通过原生 macOS 应用、可选 Android 配套客户端或本地命令行生成、保留和管理 iCloud「隐藏邮件地址」。
   <br>
-  包含 macOS 原生登录、Windows 启动器、iCloud 中国区支持和本地收件台。
+  包含 macOS 原生登录、Android 客户端、Windows 启动器、iCloud 中国区支持和本地收件台。
 </p>
 
 <p align="center">
@@ -56,6 +56,7 @@
 - [功能亮点](#功能亮点)
 - [快速开始](#快速开始)
 - [macOS 应用](#macos-应用)
+- [Android 应用](#android-应用)
 - [Windows 启动器](#windows-启动器)
 - [命令行用法](#命令行用法)
 - [Cookie 管理](#cookie-管理)
@@ -79,6 +80,7 @@
 | iCloud 中国区 | 使用 `icloud.com.cn` 的 Origin、校验接口和 maildomain 主机。 |
 | 分区检测 | 从捕获请求或账号校验结果推导正确的 `pNNN-maildomainws` 主机。 |
 | 原生 macOS 应用 | 批量生成、浏览并导出本地历史记录，并在遇到频率限制时自动等待。 |
+| Android 应用 | 为 Android 用户提供国际区/中国区 iCloud、地址生成和本地状态管理。 |
 | Windows 启动器 | 双击即可生成、查看和管理 Cookie。 |
 | 双语界面 | 启动器和 CLI 帮助包含英文和简体中文。 |
 | 自动捕获 Cookie | 打开 iCloud+，点击「隐藏邮件地址」，捕获应用请求并保存 Cookie。 |
@@ -100,6 +102,7 @@
   首次启动时，请在访达中右键点击应用并选择**打开**。
 - **macOS 命令行：** Apple 芯片下载 `hidemyemail-macos`，Intel 下载
   `hidemyemail-macos-x86_64`。执行 `chmod +x` 后从终端运行。
+- **Android 应用：** 从 [Android 配套客户端 Releases](https://github.com/never-seek/hidemyemail-android/releases) 下载当前可安装 APK，或构建 [`android/`](android/) 目录中的源码。
 
 原生应用会在登录后捕获自己的 iCloud 会话。预构建的命令行二进制仍需手动获取
 Cookie；自动获取（Playwright）仅在源码运行时可用。
@@ -133,6 +136,26 @@ uv run hidemyemail --help
 
 如果 Apple 限制生成频率，应用会保留已完成的地址、显示倒计时，并在至少 30 分钟
 后自动重试；调度运行期间需要保持应用开启。
+
+## Android 应用
+
+可选 Android 客户端支持 Android 6.0（API 23）及以上版本，为 Android 用户提供
+管理自己 iCloud+「隐藏邮件地址」的移动端界面。它支持国际区和中国大陆区 iCloud、
+原始 `Cookie` Header 或浏览器 **Copy as cURL** 导入、账号校验、地址生成、使用中/
+已停用地址列表，以及本地 `unused` / `used` / `trash` 状态管理。
+
+在本仓库中构建：
+
+```bash
+cd android
+bash ./gradlew testDebugUnitTest
+bash ./gradlew assembleDebug
+```
+
+Windows 下使用 `./gradlew.bat`。生成的 Debug APK 位于
+`android/app/build/outputs/apk/debug/app-debug.apk`。在上游发行工作流开始发布
+Android 安装包前，可从 [Android 配套客户端 Releases](https://github.com/never-seek/hidemyemail-android/releases)
+下载可安装 APK。
 
 ## Windows 启动器
 
@@ -403,7 +426,7 @@ Apple、iCloud 和 Hide My Email 是 Apple Inc. 的商标。
 
 ## 致谢
 
-- iCloud 中国区支持、Windows 启动器和本地收件台由 [@never-seek](https://github.com/never-seek) 贡献。
+- iCloud 中国区支持、Windows 启动器、本地收件台和 Android 配套客户端由 [@never-seek](https://github.com/never-seek) 贡献。
 - 同时感谢其他[社区贡献者](https://github.com/rtunazzz/hidemyemail-generator/graphs/contributors)。
 
 ## 许可证
