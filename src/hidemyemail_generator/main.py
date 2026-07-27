@@ -9,6 +9,7 @@ from typing import Union, List, Optional
 import re
 import ssl
 from pathlib import Path
+from urllib.parse import urlparse
 
 import aiohttp
 import certifi
@@ -51,6 +52,24 @@ COOKIE_CAPTURE_URLS = {
     "china": "https://www.icloud.com.cn/icloudplus/",
 }
 HIDEMYEMAIL_APP_PATH = "/applications/hidemyemail/"
+
+
+def is_hidemyemail_app_request(request_url: str) -> bool:
+    path = urlparse(request_url).path
+    return path.startswith(HIDEMYEMAIL_APP_PATH) and path.endswith("/index.html")
+
+
+def browser_cookie_header(cookies: list[dict]) -> str:
+    pairs = []
+    seen_names = set()
+    for cookie in cookies:
+        name = str(cookie.get("name", "")).strip()
+        value = cookie.get("value")
+        if not name or value is None or name in seen_names:
+            continue
+        seen_names.add(name)
+        pairs.append(f"{name}={value}")
+    return "; ".join(pairs)
 
 
 def maildomain_suffix(region: str) -> str:
@@ -1058,15 +1077,27 @@ async def _capture_cookie(cookie_file: str, region: str = DEFAULT_REGION) -> boo
 
         page = context.pages[0] if context.pages else await context.new_page()
 
-        def on_request(request):
-            if HIDEMYEMAIL_APP_PATH not in request.url:
-                return
-            if "rootDomain=www" not in request.url:
+        async def capture_request_cookie(request) -> None:
+            if not is_hidemyemail_app_request(request.url):
                 return
 
-            cookie = request.headers.get("cookie", "")
-            if cookie and not captured.done():
-                captured.set_result((request.url, cookie))
+            try:
+                headers = await request.all_headers()
+                cookie = headers.get("cookie", "")
+                if not cookie:
+                    cookie_urls = [
+                        request.url,
+                        SETUP_VALIDATE_URLS[region],
+                        f"https://{HideMyEmail.REGION_CONFIG[region]['maildomain_host']}/",
+                    ]
+                    cookie = browser_cookie_header(await context.cookies(cookie_urls))
+                if cookie and not captured.done():
+                    captured.set_result((request.url, cookie))
+            except Exception:
+                return
+
+        def on_request(request):
+            asyncio.create_task(capture_request_cookie(request))
 
         context.on("request", on_request)
 

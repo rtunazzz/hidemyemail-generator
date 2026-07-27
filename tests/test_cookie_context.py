@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import hidemyemail_generator.main as generator_main
 from hidemyemail_generator.hidemyemail import HideMyEmail
 from hidemyemail_generator.main import HIDEMYEMAIL_APP_PATH, load_cookie_context
 
@@ -39,8 +40,43 @@ class CookieContextTests(unittest.TestCase):
             "https://www.icloud.com.cn/applications/hidemyemail/"
             "2626Build17/zh-cn/index.html?rootDomain=www"
         )
+        legacy_app_url = (
+            "https://www.icloud.com.cn/applications/hidemyemail/"
+            "current/zh-cn/index.html?rootDomain=www"
+        )
+        asset_url = (
+            "https://www.icloud.com.cn/applications/hidemyemail/"
+            "2626Build17/zh-cn/main.js"
+        )
 
         self.assertIn(HIDEMYEMAIL_APP_PATH, current_app_url)
+        self.assertTrue(
+            hasattr(generator_main, "is_hidemyemail_app_request"),
+            "Expected a helper that recognizes the current iCloud app request",
+        )
+        matcher = generator_main.is_hidemyemail_app_request
+        self.assertTrue(matcher(current_app_url))
+        self.assertTrue(matcher(legacy_app_url))
+        self.assertFalse(matcher(asset_url))
+
+    def test_builds_cookie_header_from_browser_cookie_records(self):
+        self.assertTrue(
+            hasattr(generator_main, "browser_cookie_header"),
+            "Expected a helper that normalizes browser cookie records",
+        )
+        header = generator_main.browser_cookie_header(
+            [
+                {"name": "X-APPLE-WEBAUTH-USER", "value": "valid"},
+                {"name": "session", "value": "valid"},
+                {"name": "session", "value": "duplicate"},
+                {"name": "", "value": "ignored"},
+            ]
+        )
+
+        self.assertEqual(
+            header,
+            "X-APPLE-WEBAUTH-USER=valid; session=valid",
+        )
 
     def test_uses_region_specific_generation_locale(self):
         self.assertEqual(
