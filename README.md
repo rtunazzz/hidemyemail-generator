@@ -40,14 +40,18 @@
 </p>
 
 - Generate one address or a batch with a custom label.
-- Copy individual addresses, copy everything, or export your local history.
+- Manage local `unused`, `used`, and `trash` addresses alongside the live active
+  or inactive iCloud inventory.
+- Connect a receiving mailbox, sync forwarded messages, and copy extracted
+  verification codes without leaving the app.
+- Copy individual addresses, copy everything, or export local history and CSV data.
 - Schedule larger batches; the app pauses and resumes when Apple rate-limits creation.
 - Sign in natively, keep the session in Keychain, and see connection status at a glance.
 - Keep everything private: address history stays local and the app collects no telemetry.
 
 <p align="center">
-  <img width="49%" src="docs/screenshots/emails.png" alt="Local generated email history with copy and export controls">
-  <img width="49%" src="docs/screenshots/scheduler.png" alt="Rate-limit-aware scheduled email generation">
+  <img width="49%" src="docs/screenshots/addresses.png" alt="Local address manager with state, source, copy, sync, and export controls">
+  <img width="49%" src="docs/screenshots/inbox.png" alt="Local inbox with message context and extracted verification codes">
 </p>
 
 ## Overview
@@ -147,16 +151,23 @@ The app requires macOS 13 or newer. It bundles the CLI helper, so Python and
 2. Complete Apple's system account prompt or fallback sign-in form. The iCloud
    session is captured from the authenticated Hide My Email request before its
    page loads. The window closes automatically when the session validates.
-3. Use **Generate** for one address or a batch, review and export them from
-   **Emails**, or use **Scheduler** to create addresses at a configurable
-   interval until a target is reached.
+3. Use **Generate** for one address or a batch, manage local and live iCloud
+   inventory from **Addresses**, connect a receiving mailbox under **Inbox**,
+   or use **Scheduler** to create addresses at a configurable interval until a
+   target is reached.
 
 The session cookie is validated locally and stored in macOS Keychain. Every
 helper invocation receives it through an owner-only temporary file that is
 deleted immediately afterward. Generated addresses are also appended to
 `~/Library/Application Support/HideMyEmail Generator/emails.txt`. The
-**Emails** tab stores each address, label, and generation time in a local
-owner-only history file.
+**History** scope stores each address, label, and generation time in a local
+owner-only history file. Address workflow state, inbox metadata, and extracted
+codes stay in `hidemyemail.db` in the same Application Support directory.
+
+The app stores an optional IMAP password or app password in macOS Keychain and
+keeps only non-secret inbox settings in app preferences. It creates an
+owner-only temporary CLI config for each inbox sync and deletes it immediately.
+This is intentionally separate from the CLI's `inbox_config.json` workflow.
 
 If Apple rate-limits creation, the app preserves completed addresses, shows a
 countdown, and retries after at least 30 minutes while the app remains open.
@@ -448,8 +459,9 @@ These files are local-only and ignored by Git:
 
 - Cookies are stored locally and ignored by Git.
 - The macOS app stores its validated session in Keychain and never stores or logs the Apple Account password.
+- IMAP secrets entered in the macOS app are stored in Keychain, never in app preferences or process arguments.
 - The macOS app uses owner-only temporary cookie files and deletes them after each helper invocation.
-- The macOS app contains no analytics, telemetry, advertising, or crash-reporting SDK. It communicates only with Apple's iCloud endpoints during sign-in and generation.
+- The macOS app contains no analytics, telemetry, advertising, or crash-reporting SDK. It connects only to Apple's iCloud endpoints and, when Inbox is configured, the user's chosen IMAP server.
 - IMAP configuration and local mailbox data are stored locally and ignored by Git.
 - Automatic capture uses a separate browser profile.
 - The project does not intentionally collect, upload, or share your cookies, email data, or verification codes.

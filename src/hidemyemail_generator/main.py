@@ -87,9 +87,9 @@ def bridge_error(response: dict | None) -> dict:
 
 def write_result_json(result_file: str | None, payload: dict) -> None:
     if result_file:
-        Path(result_file).write_text(
-            json.dumps(payload, ensure_ascii=False), encoding="utf-8"
-        )
+        path = Path(result_file)
+        path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        path.chmod(0o600)
 
 
 def account_summary(account: dict) -> dict:
@@ -111,6 +111,7 @@ def account_summary(account: dict) -> dict:
     return {
         "apple_id": ds_info.get("appleId") or "Unknown",
         "name": full_name or "Unknown",
+        "dsid": str(ds_info.get("dsid")) if ds_info.get("dsid") is not None else None,
         "user_partition": user_partition,
         "maildomain_host": maildomain_host,
         "hide_my_email_available": bool(
@@ -375,20 +376,32 @@ class RichHideMyEmail(HideMyEmail):
         except KeyboardInterrupt:
             return []
 
-    async def list(self, label_query: Optional[str], active: bool) -> None:
+    async def list(self, label_query: Optional[str], active: bool) -> dict:
         gen_res = await self.list_email()
         if not self._check_response(gen_res, "list emails"):
-            return
+            return {"ok": False, "addresses": [], "error": self.last_error}
 
         self.table.add_column("Label / 标签")
         self.table.add_column("Hide My Email / 隐藏邮箱")
         self.table.add_column("Created At / 创建时间")
         self.table.add_column("Is Active / 使用中")
 
+        addresses = []
         for row in gen_res["result"]["hmeEmails"]:
             if row["isActive"] == active and (
                 label_query is None or re.search(label_query, row["label"])
             ):
+                created_at = datetime.datetime.fromtimestamp(
+                    row["createTimestamp"] / 1000, tz=datetime.timezone.utc
+                ).isoformat()
+                addresses.append(
+                    {
+                        "email": row["hme"],
+                        "label": row["label"],
+                        "created_at": created_at,
+                        "is_active": bool(row["isActive"]),
+                    }
+                )
                 self.table.add_row(
                     row["label"],
                     row["hme"],
@@ -397,6 +410,7 @@ class RichHideMyEmail(HideMyEmail):
                 )
 
         self.console.print(self.table)
+        return {"ok": True, "addresses": addresses, "error": None}
 
 
 @click.group()
@@ -501,12 +515,22 @@ def generatecommand(
     type=REGION_CHOICE,
     help="iCloud region to use / iCloud 区域",
 )
-def listcommand(label_query: Optional[str], active: bool, cookie_file: str, region: str):
+@click.option("--result-json", type=click.Path(dir_okay=False), hidden=True)
+def listcommand(
+    label_query: Optional[str],
+    active: bool,
+    cookie_file: str,
+    region: str,
+    result_json: Optional[str],
+):
     "List emails / 查看隐藏邮箱"
     try:
-        asyncio.run(_list(label_query, active, cookie_file, region))
+        result = asyncio.run(_list(label_query, active, cookie_file, region))
     except KeyboardInterrupt:
-        pass
+        return
+    write_result_json(result_json, result)
+    if result_json and not result["ok"]:
+        raise click.ClickException(result["error"]["message"])
 
 
 @click.command()
@@ -632,22 +656,42 @@ def inbox_setup(
     show_default=True,
     type=click.Path(),
 )
-def inbox_status(config_file: str, db_file: str):
+@click.option("--result-json", type=click.Path(dir_okay=False), hidden=True)
+def inbox_status(config_file: str, db_file: str, result_json: Optional[str]):
     "Show local inbox configuration and database counts / 查看本地收件台状态"
     console = Console()
     try:
         config = load_config(config_file)
-    except FileNotFoundError as e:
+    except Exception as e:
+        write_result_json(
+            result_json,
+            {
+                "ok": False,
+                "config": None,
+                "counts": None,
+                "error": bridge_error({"reason": str(e)}),
+            },
+        )
         raise click.ClickException(str(e)) from e
 
     conn = connect_db(db_file)
     try:
+        state_counts = {state: 0 for state in ADDRESS_STATES}
+        state_counts.update(
+            {
+                row["state"]: row["count"]
+                for row in conn.execute(
+                    "SELECT state, COUNT(*) AS count FROM addresses GROUP BY state"
+                ).fetchall()
+            }
+        )
         counts = {
             "addresses": conn.execute("SELECT COUNT(*) FROM addresses").fetchone()[0],
             "messages": conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0],
             "codes": conn.execute(
                 "SELECT COUNT(*) FROM messages WHERE code IS NOT NULL AND code != ''"
             ).fetchone()[0],
+            "states": state_counts,
         }
     finally:
         conn.close()
@@ -663,6 +707,21 @@ def inbox_status(config_file: str, db_file: str):
     table.add_row("Messages / 邮件", str(counts["messages"]))
     table.add_row("Codes / 验证码", str(counts["codes"]))
     console.print(table)
+    write_result_json(
+        result_json,
+        {
+            "ok": True,
+            "config": {
+                "host": config.host,
+                "port": config.port,
+                "username": mask_account(config.username),
+                "folder": config.folder,
+                "use_ssl": config.use_ssl,
+            },
+            "counts": counts,
+            "error": None,
+        },
+    )
 
 
 @inboxgroup.command(name="sync")
@@ -680,13 +739,29 @@ def inbox_status(config_file: str, db_file: str):
 )
 @click.option("--limit", default=50, show_default=True, type=int)
 @click.option("--show-codes", is_flag=True, default=False)
-def inbox_sync(config_file: str, db_file: str, limit: int, show_codes: bool):
+@click.option("--result-json", type=click.Path(dir_okay=False), hidden=True)
+def inbox_sync(
+    config_file: str,
+    db_file: str,
+    limit: int,
+    show_codes: bool,
+    result_json: Optional[str],
+):
     "Fetch new inbox messages through IMAP / 通过 IMAP 同步新邮件"
     console = Console()
     try:
         config = load_config(config_file)
         inserted = sync_inbox(config, db_file=db_file, limit=limit)
     except Exception as e:
+        write_result_json(
+            result_json,
+            {
+                "ok": False,
+                "count": 0,
+                "messages": [],
+                "error": bridge_error({"reason": str(e)}),
+            },
+        )
         raise click.ClickException(str(e)) from e
 
     console.log(f"[bold green][OK][/] Synced {len(inserted)} new message(s) / 已同步 {len(inserted)} 封新邮件")
@@ -707,6 +782,15 @@ def inbox_sync(config_file: str, db_file: str, limit: int, show_codes: bool):
 
     if show_codes:
         _print_messages(db_file, only_codes=True, limit=20)
+    write_result_json(
+        result_json,
+        {
+            "ok": True,
+            "count": len(inserted),
+            "messages": [_message_payload(row) for row in inserted],
+            "error": None,
+        },
+    )
 
 
 @inboxgroup.command(name="codes")
@@ -717,9 +801,21 @@ def inbox_sync(config_file: str, db_file: str, limit: int, show_codes: bool):
     type=click.Path(),
 )
 @click.option("--limit", default=20, show_default=True, type=int)
-def inbox_codes(db_file: str, limit: int):
+@click.option("--result-json", type=click.Path(dir_okay=False), hidden=True)
+def inbox_codes(db_file: str, limit: int, result_json: Optional[str]):
     "Show recent messages with verification codes / 查看最近验证码邮件"
-    _print_messages(db_file, only_codes=True, limit=limit)
+    try:
+        rows = _print_messages(db_file, only_codes=True, limit=limit)
+    except Exception as e:
+        write_result_json(
+            result_json,
+            {"ok": False, "messages": [], "error": bridge_error({"reason": str(e)})},
+        )
+        raise click.ClickException(str(e)) from e
+    write_result_json(
+        result_json,
+        {"ok": True, "messages": rows, "error": None},
+    )
 
 
 @inboxgroup.command(name="messages")
@@ -730,9 +826,21 @@ def inbox_codes(db_file: str, limit: int):
     type=click.Path(),
 )
 @click.option("--limit", default=20, show_default=True, type=int)
-def inbox_messages(db_file: str, limit: int):
+@click.option("--result-json", type=click.Path(dir_okay=False), hidden=True)
+def inbox_messages(db_file: str, limit: int, result_json: Optional[str]):
     "Show recent inbox messages / 查看最近收件"
-    _print_messages(db_file, only_codes=False, limit=limit)
+    try:
+        rows = _print_messages(db_file, only_codes=False, limit=limit)
+    except Exception as e:
+        write_result_json(
+            result_json,
+            {"ok": False, "messages": [], "error": bridge_error({"reason": str(e)})},
+        )
+        raise click.ClickException(str(e)) from e
+    write_result_json(
+        result_json,
+        {"ok": True, "messages": rows, "error": None},
+    )
 
 
 @inboxgroup.command(name="addresses")
@@ -748,13 +856,23 @@ def inbox_messages(db_file: str, limit: int):
     type=click.Path(),
 )
 @click.option("--limit", default=50, show_default=True, type=int)
-def inbox_addresses(state: Optional[str], db_file: str, limit: int):
+@click.option("--result-json", type=click.Path(dir_okay=False), hidden=True)
+def inbox_addresses(
+    state: Optional[str], db_file: str, limit: int, result_json: Optional[str]
+):
     "List local Hide My Email addresses / 查看本地隐藏邮箱地址"
-    conn = connect_db(db_file)
     try:
-        rows = list_addresses(conn, state=state, limit=limit)
-    finally:
-        conn.close()
+        conn = connect_db(db_file)
+        try:
+            rows = list_addresses(conn, state=state, limit=limit)
+        finally:
+            conn.close()
+    except Exception as e:
+        write_result_json(
+            result_json,
+            {"ok": False, "addresses": [], "error": bridge_error({"reason": str(e)})},
+        )
+        raise click.ClickException(str(e)) from e
 
     table = Table(title="Local Addresses / 本地地址")
     table.add_column("Email / 邮箱")
@@ -771,6 +889,23 @@ def inbox_addresses(state: Optional[str], db_file: str, limit: int):
             row["updated_at"],
         )
     Console().print(table)
+    write_result_json(
+        result_json,
+        {
+            "ok": True,
+            "addresses": [
+                {
+                    "email": row["email"],
+                    "label": row["label"] or "",
+                    "state": row["state"],
+                    "source": row["source"],
+                    "updated_at": row["updated_at"],
+                }
+                for row in rows
+            ],
+            "error": None,
+        },
+    )
 
 
 @inboxgroup.command(name="mark")
@@ -782,14 +917,31 @@ def inbox_addresses(state: Optional[str], db_file: str, limit: int):
     show_default=True,
     type=click.Path(),
 )
-def inbox_mark(email: str, state: str, db_file: str):
+@click.option("--result-json", type=click.Path(dir_okay=False), hidden=True)
+def inbox_mark(email: str, state: str, db_file: str, result_json: Optional[str]):
     "Mark an address as unused, used, or trash / 标记地址状态"
-    conn = connect_db(db_file)
     try:
-        mark_address(conn, email, state)
-    finally:
-        conn.close()
+        conn = connect_db(db_file)
+        try:
+            mark_address(conn, email, state)
+        finally:
+            conn.close()
+    except Exception as e:
+        write_result_json(
+            result_json,
+            {
+                "ok": False,
+                "email": email,
+                "state": state,
+                "error": bridge_error({"reason": str(e)}),
+            },
+        )
+        raise click.ClickException(str(e)) from e
     Console().log(f'[bold green][OK][/] Marked "{email}" as {state} / 已标记地址状态')
+    write_result_json(
+        result_json,
+        {"ok": True, "email": email, "state": state, "error": None},
+    )
 
 
 @inboxgroup.command(name="export")
@@ -805,12 +957,28 @@ def inbox_mark(email: str, state: str, db_file: str):
     show_default=True,
     type=click.Path(),
 )
-def inbox_export(db_file: str, export_dir: str):
+@click.option("--result-json", type=click.Path(dir_okay=False), hidden=True)
+def inbox_export(db_file: str, export_dir: str, result_json: Optional[str]):
     "Export local addresses and messages to CSV / 导出本地地址和邮件 CSV"
-    outputs = export_csv_files(db_file=db_file, export_dir=export_dir)
+    try:
+        outputs = export_csv_files(db_file=db_file, export_dir=export_dir)
+    except Exception as e:
+        write_result_json(
+            result_json,
+            {"ok": False, "outputs": {}, "error": bridge_error({"reason": str(e)})},
+        )
+        raise click.ClickException(str(e)) from e
     console = Console()
     for name, path in outputs.items():
         console.log(f"[bold green][OK][/] Exported {name}: {path} / 已导出")
+    write_result_json(
+        result_json,
+        {
+            "ok": True,
+            "outputs": {name: str(path) for name, path in outputs.items()},
+            "error": None,
+        },
+    )
 
 
 @inboxgroup.command(name="sync-hme")
@@ -833,13 +1001,26 @@ def inbox_export(db_file: str, export_dir: str):
     show_default=True,
     type=click.Path(),
 )
-def inbox_sync_hme(cookie_file: str, region: str, db_file: str):
+@click.option("--result-json", type=click.Path(dir_okay=False), hidden=True)
+def inbox_sync_hme(
+    cookie_file: str, region: str, db_file: str, result_json: Optional[str]
+):
     "Sync existing iCloud Hide My Email addresses into the local database / 同步已有 iCloud 隐藏邮箱到本地库"
     try:
         count = asyncio.run(_sync_hme_to_db(cookie_file, region, db_file))
     except KeyboardInterrupt:
         return
+    except Exception as e:
+        write_result_json(
+            result_json,
+            {"ok": False, "count": 0, "error": bridge_error({"reason": str(e)})},
+        )
+        raise
     Console().log(f"[bold green][OK][/] Synced {count} Hide My Email address(es) / 已同步 {count} 个隐藏邮箱")
+    write_result_json(
+        result_json,
+        {"ok": True, "count": count, "error": None},
+    )
 
 
 async def _generate(
@@ -890,9 +1071,9 @@ async def _list(
     active: bool,
     cookie_file: str,
     region: str = DEFAULT_REGION,
-) -> None:
+) -> dict:
     async with RichHideMyEmail(cookie_file=cookie_file, region=region) as hme:
-        await hme.list(label_query, active)
+        return await hme.list(label_query, active)
 
 
 async def _whoami(cookie_file: str, region: str = DEFAULT_REGION) -> dict:
@@ -941,7 +1122,18 @@ async def _whoami(cookie_file: str, region: str = DEFAULT_REGION) -> dict:
     return {"ok": True, "account": summary, "error": None}
 
 
-def _print_messages(db_file: str, only_codes: bool, limit: int) -> None:
+def _message_payload(row) -> dict:
+    return {
+        "received_at": row.get("received_at") if isinstance(row, dict) else row["received_at"],
+        "hme_address": row.get("hme_address") if isinstance(row, dict) else row["hme_address"],
+        "sender": row.get("sender") if isinstance(row, dict) else row["sender"],
+        "subject": row.get("subject") if isinstance(row, dict) else row["subject"],
+        "code": row.get("code") if isinstance(row, dict) else row["code"],
+        "body_preview": row.get("body_preview") if isinstance(row, dict) else row["body_preview"],
+    }
+
+
+def _print_messages(db_file: str, only_codes: bool, limit: int) -> list[dict]:
     conn = connect_db(db_file)
     try:
         rows = list_messages(conn, only_codes=only_codes, limit=limit)
@@ -963,6 +1155,7 @@ def _print_messages(db_file: str, only_codes: bool, limit: int) -> None:
             row["code"] or "",
         )
     Console().print(table)
+    return [_message_payload(row) for row in rows]
 
 
 async def _sync_hme_to_db(
