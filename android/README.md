@@ -13,11 +13,13 @@ iCloud+「隐藏邮件地址」的用户提供移动端界面。
 
 - Supports global iCloud and iCloud China endpoints.
 - Accepts a raw `Cookie` header or browser **Copy as cURL** text.
-- Validates the signed-in account, generates aliases, and lists active or
-  inactive addresses.
+- Validates the signed-in account, generates aliases, lists active or inactive
+  addresses, and lets users edit labels and notes or change address activity.
 - Maintains phone-local `unused`, `used`, and `trash` address states.
 - Does not use a companion server; requests go directly to the relevant iCloud
   endpoint.
+- Uses English resources by default and Simplified Chinese resources on Chinese
+  devices.
 
 - 支持国际区与中国大陆区 iCloud 端点。
 - 支持原始 `Cookie` Header 和浏览器 **Copy as cURL** 内容。
@@ -45,23 +47,16 @@ cd android
 
 The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
 
-## Distribution / 下载
-
-Until the upstream release workflow publishes Android artifacts, the current
-installable APK is available from the companion repository's
-[releases](https://github.com/never-seek/hidemyemail-android/releases).
-
-在上游发行工作流开始发布 Android 安装包前，可从独立配套仓库的
-[Releases](https://github.com/never-seek/hidemyemail-android/releases) 下载当前 APK。
-
 ## Data / 本地数据
 
 The app stores its configuration and local address-state records in app-private
 storage on the Android device. Do not commit cookies, Apple IDs, real aliases,
 verification codes, signing keys, or generated APKs.
+Android backup is disabled so the session cookie remains on the device.
 
 App 会在 Android 设备的应用私有存储中保存配置与本地地址状态。请不要提交
 Cookie、Apple ID、真实邮箱别名、验证码、签名密钥或生成的 APK。
+已禁用 Android 备份，确保会话 Cookie 不会离开设备。
 
 ## License / 许可证
 

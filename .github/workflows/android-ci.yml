@@ -39,9 +39,6 @@ jobs:
           cache: gradle
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-      - name: Use Gradle distribution reachable from GitHub Actions
-        run: >-
-          sed -i 's#mirrors\.cloud\.tencent\.com/gradle/#services.gradle.org/distributions/#' gradle/wrapper/gradle-wrapper.properties
       - name: Run Android unit tests
         run: bash ./gradlew testDebugUnitTest --no-daemon --stacktrace
       - name: Assemble debug APK

@@ -122,7 +122,7 @@ Grab a standalone binary from the [latest release](../../releases/latest) — no
   [Intel DMG](../../releases/latest/download/HideMyEmail-Generator-macOS-Intel.dmg)
   for Intel Macs, then right-click the app and choose **Open** the first time.
 - **macOS CLI:** download `hidemyemail-macos` for Apple Silicon or `hidemyemail-macos-x86_64` for Intel. Make it executable with `chmod +x`, then run it from Terminal.
-- **Android app:** download the current installable APK from the [Android companion releases](https://github.com/never-seek/hidemyemail-android/releases), or build the source under [`android/`](android/).
+- **Android app:** build the source under [`android/`](android/).
 
 The native app captures its own iCloud session after you sign in. Prebuilt CLI
 binaries still use manual cookie capture; Playwright capture is available only
@@ -200,7 +200,9 @@ The optional Android client targets Android 6.0 (API 23) or newer and gives
 Android users a phone-first interface for their own iCloud+ Hide My Email
 aliases. It supports global and China iCloud endpoints, raw `Cookie` header or
 browser **Copy as cURL** import, account validation, alias generation,
-active/inactive address lists, and local `unused` / `used` / `trash` tracking.
+active/inactive address lists, editable labels and notes, deactivate/reactivate
+controls, and local `unused` / `used` / `trash` tracking. The UI follows the
+device language with English and Simplified Chinese resources.
 
 Build it from this repository with:
 
@@ -211,9 +213,7 @@ bash ./gradlew assembleDebug
 ```
 
 On Windows, use `./gradlew.bat` instead. The debug APK is written to
-`android/app/build/outputs/apk/debug/app-debug.apk`. Until the upstream release
-workflow publishes Android artifacts, the installable APK is available from the
-[Android companion releases](https://github.com/never-seek/hidemyemail-android/releases).
+`android/app/build/outputs/apk/debug/app-debug.apk`.
 
 ## Windows Launcher
 

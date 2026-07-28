@@ -22,3 +22,10 @@ does not alter any third-party license.
 
 打包的传递依赖许可证文本与声明可从各自上游项目及 Maven/Gradle 元数据取得；本
 文件不改变任何第三方许可证。
+
+## Apple interface asset
+
+`app/src/main/res/drawable/ic_hidemyemail_official.png` is the public Hide My
+Email icon served by iCloud.com and is used only as the Android launcher icon.
+Apple and iCloud are trademarks of Apple Inc.; this asset is not covered by the
+repository's MIT license.

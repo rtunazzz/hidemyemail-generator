@@ -102,7 +102,7 @@
   首次启动时，请在访达中右键点击应用并选择**打开**。
 - **macOS 命令行：** Apple 芯片下载 `hidemyemail-macos`，Intel 下载
   `hidemyemail-macos-x86_64`。执行 `chmod +x` 后从终端运行。
-- **Android 应用：** 从 [Android 配套客户端 Releases](https://github.com/never-seek/hidemyemail-android/releases) 下载当前可安装 APK，或构建 [`android/`](android/) 目录中的源码。
+- **Android 应用：** 构建 [`android/`](android/) 目录中的源码。
 
 原生应用会在登录后捕获自己的 iCloud 会话。预构建的命令行二进制仍需手动获取
 Cookie；自动获取（Playwright）仅在源码运行时可用。
@@ -142,7 +142,8 @@ uv run hidemyemail --help
 可选 Android 客户端支持 Android 6.0（API 23）及以上版本，为 Android 用户提供
 管理自己 iCloud+「隐藏邮件地址」的移动端界面。它支持国际区和中国大陆区 iCloud、
 原始 `Cookie` Header 或浏览器 **Copy as cURL** 导入、账号校验、地址生成、使用中/
-已停用地址列表，以及本地 `unused` / `used` / `trash` 状态管理。
+已停用地址列表、标签和备注编辑、停用/重新启用，以及本地 `unused` / `used` / `trash`
+状态管理。界面提供英文和简体中文资源，并会跟随设备语言。
 
 在本仓库中构建：
 
@@ -153,9 +154,7 @@ bash ./gradlew assembleDebug
 ```
 
 Windows 下使用 `./gradlew.bat`。生成的 Debug APK 位于
-`android/app/build/outputs/apk/debug/app-debug.apk`。在上游发行工作流开始发布
-Android 安装包前，可从 [Android 配套客户端 Releases](https://github.com/never-seek/hidemyemail-android/releases)
-下载可安装 APK。
+`android/app/build/outputs/apk/debug/app-debug.apk`。
 
 ## Windows 启动器
 
