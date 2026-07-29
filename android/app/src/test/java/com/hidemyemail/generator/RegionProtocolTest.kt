@@ -12,7 +12,7 @@ class RegionProtocolTest {
 
     @Test
     fun usesRegionAppropriateAcceptLanguage() {
-        assertEquals("en-US,en;q=0.9", HmeRepository.acceptLanguage(ICloudRegion.Global))
+        assertEquals("en-US,en;q=0.7", HmeRepository.acceptLanguage(ICloudRegion.Global))
         assertEquals("zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7", HmeRepository.acceptLanguage(ICloudRegion.China))
     }
 
