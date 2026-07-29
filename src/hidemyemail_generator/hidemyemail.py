@@ -13,10 +13,12 @@ class HideMyEmail:
         "global": {
             "maildomain_host": "p68-maildomainws.icloud.com",
             "web_origin": "https://www.icloud.com",
+            "generate_lang_code": "en-us",
         },
         "china": {
             "maildomain_host": "p217-maildomainws.icloud.com.cn",
             "web_origin": "https://www.icloud.com.cn",
+            "generate_lang_code": "zh-cn",
         },
     }
     params = {
@@ -43,6 +45,7 @@ class HideMyEmail:
         self.base_url_v1 = f"https://{resolved_maildomain_host}/v1/hme"
         self.base_url_v2 = f"https://{resolved_maildomain_host}/v2/hme"
         self.web_origin = config["web_origin"]
+        self.generate_lang_code = config["generate_lang_code"]
         self.cookies = cookies
 
     async def __aenter__(self):
@@ -110,7 +113,7 @@ class HideMyEmail:
             "POST",
             f"{self.base_url_v1}/generate",
             params=self.params,
-            json={"langCode": "en-us"},
+            json={"langCode": self.generate_lang_code},
         )
 
     async def reserve_email(self, email: str, label: str, note: str) -> dict:
@@ -128,4 +131,37 @@ class HideMyEmail:
         """List all HME"""
         return await self._request_json(
             "GET", f"{self.base_url_v2}/list", params=self.params
+        )
+
+    async def update_email_metadata(
+        self, anonymous_id: str, label: str, note: str
+    ) -> dict:
+        """Update the label and note for an existing Hide My Email address."""
+        return await self._request_json(
+            "POST",
+            f"{self.base_url_v1}/updateMetaData",
+            params=self.params,
+            json={
+                "anonymousId": anonymous_id,
+                "label": label,
+                "note": note,
+            },
+        )
+
+    async def deactivate_email(self, anonymous_id: str) -> dict:
+        """Deactivate an existing Hide My Email address."""
+        return await self._request_json(
+            "POST",
+            f"{self.base_url_v1}/deactivate",
+            params=self.params,
+            json={"anonymousId": anonymous_id},
+        )
+
+    async def reactivate_email(self, anonymous_id: str) -> dict:
+        """Reactivate an existing Hide My Email address."""
+        return await self._request_json(
+            "POST",
+            f"{self.base_url_v1}/reactivate",
+            params=self.params,
+            json={"anonymousId": anonymous_id},
         )
