@@ -129,3 +129,37 @@ class HideMyEmail:
         return await self._request_json(
             "GET", f"{self.base_url_v2}/list", params=self.params
         )
+
+    async def update_email_metadata(
+        self, anonymous_id: str, label: str, note: str
+    ) -> dict:
+        """Updates the label and note of a reserved email"""
+        payload = {
+            "anonymousId": anonymous_id,
+            "label": label,
+            "note": note,
+        }
+        return await self._request_json(
+            "POST",
+            f"{self.base_url_v1}/updateMetaData",
+            params=self.params,
+            json=payload,
+        )
+
+    async def deactivate_email(self, anonymous_id: str) -> dict:
+        """Deactivates an email so it stops forwarding"""
+        return await self._request_json(
+            "POST",
+            f"{self.base_url_v1}/deactivate",
+            params=self.params,
+            json={"anonymousId": anonymous_id},
+        )
+
+    async def reactivate_email(self, anonymous_id: str) -> dict:
+        """Reactivates a previously deactivated email"""
+        return await self._request_json(
+            "POST",
+            f"{self.base_url_v1}/reactivate",
+            params=self.params,
+            json={"anonymousId": anonymous_id},
+        )
