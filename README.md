@@ -195,7 +195,7 @@ verification public key is embedded in `macos/Info.plist`.
 
 1. Bump the version in `pyproject.toml`, `uv.lock`, and `macos/Info.plist`.
 2. Merge the tested change to `main`.
-3. Tag that commit with the matching `v`-prefixed version, such as `v2.1.0`.
+3. Tag that commit with the matching `v`-prefixed version, such as `v2.1.1`.
 
 The release workflow rejects mismatched tags or a missing signing key, builds
 both Mac architectures, signs their appcasts, and publishes only after every
