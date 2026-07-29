@@ -107,6 +107,9 @@ object HmeEndpoints {
 object HmeRequestDefaults {
     const val clientBuildNumber = "2626Build17"
     const val clientMasteringNumber = "2626Build17"
+    const val userAgent =
+        "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Mobile Safari/537.36"
+    const val secChUa = "\"Not;A=Brand\";v=\"8\", \"Chromium\";v=\"150\", \"Google Chrome\";v=\"150\""
 }
 
 enum class ICloudRegion(
@@ -1330,7 +1333,9 @@ internal class HmeRepository(
             .build()
         val builder = baseRequest(httpUrl.toString(), cookie, region)
         if (method == "POST") {
-            val body = (payload ?: JSONObject()).toString().toRequestBody("application/json".toMediaType())
+            // text/plain matches the iCloud web client; OkHttp derives Content-Type from the body,
+            // so setting it here rather than as a header is what actually reaches Apple.
+            val body = (payload ?: JSONObject()).toString().toRequestBody("text/plain".toMediaType())
             builder.post(body)
         } else {
             builder.get()
@@ -1345,12 +1350,19 @@ internal class HmeRepository(
             .header("Connection", "keep-alive")
             .header("Pragma", "no-cache")
             .header("Cache-Control", "no-cache")
-            .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/141.0.0.0 Mobile Safari/537.36")
-            .header("Content-Type", "application/json")
+            .header("User-Agent", HmeRequestDefaults.userAgent)
+            .header("Content-Type", "text/plain")
             .header("Accept", "*/*")
+            .header("Sec-GPC", "1")
             .header("Origin", region.origin)
+            .header("Sec-Fetch-Site", "same-site")
+            .header("Sec-Fetch-Mode", "cors")
+            .header("Sec-Fetch-Dest", "empty")
             .header("Referer", "${region.origin}/")
             .header("Accept-Language", acceptLanguage(region))
+            .header("sec-ch-ua", HmeRequestDefaults.secChUa)
+            .header("sec-ch-ua-mobile", "?1")
+            .header("sec-ch-ua-platform", "\"Android\"")
             .header("Cookie", cookie.trim())
     }
 
@@ -1428,7 +1440,7 @@ internal class HmeRepository(
 
         fun acceptLanguage(region: ICloudRegion): String {
             return when (region) {
-                ICloudRegion.Global -> "en-US,en;q=0.9"
+                ICloudRegion.Global -> "en-US,en;q=0.7"
                 ICloudRegion.China -> "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7"
             }
         }

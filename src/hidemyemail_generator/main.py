@@ -201,13 +201,7 @@ async def fetch_account_info(cookie_file: str, region: str) -> dict:
 async def fetch_account_info_from_cookie(
     cookie: str, region: str, maildomain_host: str = ""
 ) -> dict:
-    headers = {
-        "Cookie": cookie,
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
-        "Origin": HideMyEmail.REGION_CONFIG[region]["web_origin"],
-        "Referer": f"{HideMyEmail.REGION_CONFIG[region]['web_origin']}/",
-        "Accept": "*/*",
-    }
+    headers = HideMyEmail.browser_headers(region, cookie)
     connector = aiohttp.TCPConnector(
         ssl_context=ssl.create_default_context(cafile=certifi.where())
     )
