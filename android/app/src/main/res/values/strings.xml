@@ -1,0 +1,85 @@
+<resources>
+    <string name="app_name">HideMyEmail</string>
+    <string name="app_subtitle">iCloud Hide My Email local client</string>
+
+    <string name="region_global">Global</string>
+    <string name="region_china">China</string>
+    <string name="tab_settings">Settings</string>
+    <string name="tab_generate">Generate</string>
+    <string name="tab_addresses">Addresses</string>
+    <string name="tab_local">Local</string>
+
+    <string name="status_ready">Ready</string>
+    <string name="status_settings_saved">Saved local settings</string>
+    <string name="status_validating_cookie">Validating cookie...</string>
+    <string name="status_cookie_valid">Cookie is valid: %1$s</string>
+    <string name="status_generating">Generating %1$d Hide My Email address(es)...</string>
+    <string name="status_generation_partial">Saved %1$d of %2$d address(es); stopped: %3$s</string>
+    <string name="status_generation_partial_retry">Saved %1$d of %2$d address(es); try again in about %3$d seconds.</string>
+    <string name="status_loading_addresses">Loading iCloud addresses...</string>
+    <string name="status_address_marked">%1$s marked %2$s</string>
+    <string name="status_local_cleared">Cleared local address records</string>
+    <string name="status_updating_address">Updating address information...</string>
+    <string name="status_address_updated">Address information updated</string>
+    <string name="status_deactivating_address">Deactivating address...</string>
+    <string name="status_address_deactivated">Address deactivated</string>
+    <string name="status_reactivating_address">Reactivating address...</string>
+    <string name="status_address_reactivated">Address reactivated</string>
+    <string name="operation_failed">Operation failed: %1$s</string>
+
+    <plurals name="addresses_generated">
+        <item quantity="one">%d address generated</item>
+        <item quantity="other">%d addresses generated</item>
+    </plurals>
+    <plurals name="addresses_loaded">
+        <item quantity="one">%d iCloud address loaded</item>
+        <item quantity="other">%d iCloud addresses loaded</item>
+    </plurals>
+
+    <string name="section_region">Region</string>
+    <string name="section_cookie">Cookie</string>
+    <string name="section_current_account">Current account</string>
+    <string name="section_generate">Generate Hide My Email</string>
+    <string name="section_generated_now">Generated now</string>
+    <string name="section_icloud_addresses">iCloud addresses</string>
+    <string name="section_local_state">Local state</string>
+    <string name="cookie_input_label">Cookie header or Copy as cURL</string>
+    <string name="maildomain_host_label">Maildomain host (leave blank to detect automatically)</string>
+    <string name="label_input_label">Label</string>
+    <string name="count_input_label">Count (1-20)</string>
+    <string name="note_input_label">Note</string>
+    <string name="filter_active">Active</string>
+    <string name="filter_inactive">Inactive</string>
+    <string name="note_format">Note: %1$s</string>
+    <string name="local_state_summary">Unused: %1$d  Used: %2$d  Trash: %3$d</string>
+    <string name="local_state_unused">Unused</string>
+    <string name="local_state_used">Used</string>
+    <string name="local_state_trash">Trash</string>
+    <string name="state_active">Active</string>
+    <string name="state_inactive">Inactive</string>
+
+    <string name="action_save">Save</string>
+    <string name="action_validate_account">Validate account</string>
+    <string name="action_open_icloud">Open iCloud</string>
+    <string name="action_generate">Generate</string>
+    <string name="action_refresh">Refresh</string>
+    <string name="action_clear_local">Clear local records</string>
+    <string name="action_manage">Manage</string>
+    <string name="action_close">Close</string>
+    <string name="action_deactivate">Deactivate</string>
+    <string name="action_reactivate">Reactivate</string>
+    <string name="action_cancel">Cancel</string>
+
+    <string name="dialog_manage_title">Manage Hide My Email</string>
+    <string name="dialog_deactivate_title">Deactivate address?</string>
+    <string name="dialog_deactivate_message">Mail sent to this address will no longer be forwarded.</string>
+
+    <string name="value_unknown">Unknown</string>
+    <string name="value_available">Available</string>
+    <string name="account_apple_id">Apple ID: %1$s</string>
+    <string name="account_name">Name: %1$s</string>
+    <string name="account_dsid">DSID: %1$s</string>
+    <string name="account_partition">Partition: %1$s</string>
+    <string name="account_maildomain">Maildomain: %1$s</string>
+    <string name="account_hme">Hide My Email: %1$s</string>
+</resources>

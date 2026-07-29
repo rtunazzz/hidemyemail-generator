@@ -5,9 +5,9 @@
 <h1 align="center">HideMyEmail Generator</h1>
 
 <p align="center">
-  Generate, reserve, and manage iCloud Hide My Email addresses from a native macOS app or local CLI.
+  Generate, reserve, and manage iCloud Hide My Email addresses from a native macOS app, optional Android companion, or local CLI.
   <br>
-  Includes native macOS sign-in, a Windows launcher, iCloud China support, and a local inbox.
+  Includes native macOS sign-in, an Android client, a Windows launcher, iCloud China support, and a local inbox.
 </p>
 
 <p align="center">
@@ -56,7 +56,7 @@
 
 ## Overview
 
-HideMyEmail Generator is a local macOS app and command-line utility for Apple's
+HideMyEmail Generator is a local macOS app, optional Android companion, and command-line utility for Apple's
 iCloud Hide My Email service. It generates and reserves new addresses, lists
 active or inactive ones, and inspects the account behind the current iCloud
 session.
@@ -66,6 +66,7 @@ Alongside the basics it provides:
 - region-aware iCloud API targeting for `global` and `china`;
 - automatic iCloud partition detection;
 - a native SwiftUI macOS app with in-app iCloud sign-in;
+- an optional Android client for phone-first alias management;
 - a one-click Windows launcher;
 - bilingual English / Simplified Chinese launcher and CLI output;
 - account-aware cookie management with browser-assisted capture;
@@ -80,6 +81,7 @@ Alongside the basics it provides:
 - [Highlights](#highlights)
 - [Quick Start](#quick-start)
 - [macOS App](#macos-app)
+- [Android App](#android-app)
 - [Windows Launcher](#windows-launcher)
 - [CLI Reference](#cli-reference)
 - [Cookie Management](#cookie-management)
@@ -103,6 +105,7 @@ Alongside the basics it provides:
 | iCloud China support | Use `icloud.com.cn` origins, setup validation, and maildomain hosts. |
 | Partition detection | Derive the correct `pNNN-maildomainws` host from captured requests or account validation. |
 | Native macOS app | Generate batches, browse and export local history, and automatically wait through rate limits. |
+| Android app | Phone-first companion for global and China iCloud, alias generation, and local address-state tracking. |
 | Windows launcher | Double-click menu for generation, listing, and cookie management. |
 | Bilingual UI | Launcher and CLI help include English and Simplified Chinese text. |
 | Cookie capture | Open iCloud Plus, click Hide My Email, capture the app request, and save the cookie locally. |
@@ -123,6 +126,7 @@ Grab a standalone binary from the [latest release](../../releases/latest) — no
   [Intel DMG](../../releases/latest/download/HideMyEmail-Generator-macOS-Intel.dmg)
   for Intel Macs, then right-click the app and choose **Open** the first time.
 - **macOS CLI:** download `hidemyemail-macos` for Apple Silicon or `hidemyemail-macos-x86_64` for Intel. Make it executable with `chmod +x`, then run it from Terminal.
+- **Android app:** build the source under [`android/`](android/).
 
 The native app captures its own iCloud session after you sign in. Prebuilt CLI
 binaries still use manual cookie capture; Playwright capture is available only
@@ -200,6 +204,27 @@ verification public key is embedded in `macos/Info.plist`.
 The release workflow rejects mismatched tags or a missing signing key, builds
 both Mac architectures, signs their appcasts, and publishes only after every
 artifact passes.
+
+## Android App
+
+The optional Android client targets Android 6.0 (API 23) or newer and gives
+Android users a phone-first interface for their own iCloud+ Hide My Email
+aliases. It supports global and China iCloud endpoints, raw `Cookie` header or
+browser **Copy as cURL** import, account validation, alias generation,
+active/inactive address lists, editable labels and notes, deactivate/reactivate
+controls, and local `unused` / `used` / `trash` tracking. The UI follows the
+device language with English and Simplified Chinese resources.
+
+Build it from this repository with:
+
+```bash
+cd android
+bash ./gradlew testDebugUnitTest
+bash ./gradlew assembleDebug
+```
+
+On Windows, use `./gradlew.bat` instead. The debug APK is written to
+`android/app/build/outputs/apk/debug/app-debug.apk`.
 
 ## Windows Launcher
 
@@ -485,7 +510,7 @@ trademarks of Apple Inc.
 
 ## Acknowledgements
 
-- iCloud China support, the Windows launcher, and the local inbox were
+- iCloud China support, the Windows launcher, local inbox, and Android companion were
   contributed by [@never-seek](https://github.com/never-seek).
 - Thanks to all other [community contributors](https://github.com/rtunazzz/hidemyemail-generator/graphs/contributors).
 

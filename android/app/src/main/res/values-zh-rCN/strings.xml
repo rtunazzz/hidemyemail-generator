@@ -1,0 +1,83 @@
+<resources>
+    <string name="app_name">HideMyEmail</string>
+    <string name="app_subtitle">iCloud 隐藏邮箱本地客户端</string>
+
+    <string name="region_global">国际区</string>
+    <string name="region_china">中国区</string>
+    <string name="tab_settings">配置</string>
+    <string name="tab_generate">生成</string>
+    <string name="tab_addresses">地址</string>
+    <string name="tab_local">本地</string>
+
+    <string name="status_ready">准备就绪</string>
+    <string name="status_settings_saved">已保存本地配置</string>
+    <string name="status_validating_cookie">正在校验 Cookie...</string>
+    <string name="status_cookie_valid">Cookie 可用：%1$s</string>
+    <string name="status_generating">正在生成 %1$d 个隐藏邮箱...</string>
+    <string name="status_generation_partial">已保存 %1$d / %2$d 个地址；已停止：%3$s</string>
+    <string name="status_generation_partial_retry">已保存 %1$d / %2$d 个地址；约 %3$d 秒后可重试。</string>
+    <string name="status_loading_addresses">正在读取 iCloud 地址...</string>
+    <string name="status_address_marked">已将 %1$s 标记为%2$s</string>
+    <string name="status_local_cleared">已清空本地地址记录</string>
+    <string name="status_updating_address">正在更新地址信息...</string>
+    <string name="status_address_updated">地址信息已更新</string>
+    <string name="status_deactivating_address">正在停用地址...</string>
+    <string name="status_address_deactivated">地址已停用</string>
+    <string name="status_reactivating_address">正在重新启用地址...</string>
+    <string name="status_address_reactivated">地址已重新启用</string>
+    <string name="operation_failed">操作失败：%1$s</string>
+
+    <plurals name="addresses_generated">
+        <item quantity="other">已生成 %d 个地址</item>
+    </plurals>
+    <plurals name="addresses_loaded">
+        <item quantity="other">已读取 %d 个 iCloud 地址</item>
+    </plurals>
+
+    <string name="section_region">区域</string>
+    <string name="section_cookie">Cookie</string>
+    <string name="section_current_account">当前账号</string>
+    <string name="section_generate">生成隐藏邮箱</string>
+    <string name="section_generated_now">本次生成</string>
+    <string name="section_icloud_addresses">iCloud 地址</string>
+    <string name="section_local_state">本地状态</string>
+    <string name="cookie_input_label">Cookie Header 或 Copy as cURL</string>
+    <string name="maildomain_host_label">Maildomain host（留空自动检测）</string>
+    <string name="label_input_label">标签</string>
+    <string name="count_input_label">数量（1-20）</string>
+    <string name="note_input_label">备注</string>
+    <string name="filter_active">使用中</string>
+    <string name="filter_inactive">已停用</string>
+    <string name="note_format">备注：%1$s</string>
+    <string name="local_state_summary">未使用：%1$d  已使用：%2$d  垃圾箱：%3$d</string>
+    <string name="local_state_unused">未使用</string>
+    <string name="local_state_used">已使用</string>
+    <string name="local_state_trash">垃圾箱</string>
+    <string name="state_active">使用中</string>
+    <string name="state_inactive">已停用</string>
+
+    <string name="action_save">保存</string>
+    <string name="action_validate_account">校验账号</string>
+    <string name="action_open_icloud">打开 iCloud</string>
+    <string name="action_generate">生成</string>
+    <string name="action_refresh">刷新</string>
+    <string name="action_clear_local">清空本地记录</string>
+    <string name="action_manage">管理</string>
+    <string name="action_close">关闭</string>
+    <string name="action_deactivate">停用</string>
+    <string name="action_reactivate">重新启用</string>
+    <string name="action_cancel">取消</string>
+
+    <string name="dialog_manage_title">管理隐藏邮箱</string>
+    <string name="dialog_deactivate_title">确认停用地址？</string>
+    <string name="dialog_deactivate_message">发送到该地址的邮件将不再转发。</string>
+
+    <string name="value_unknown">未知</string>
+    <string name="value_available">可用</string>
+    <string name="account_apple_id">Apple ID：%1$s</string>
+    <string name="account_name">姓名：%1$s</string>
+    <string name="account_dsid">DSID：%1$s</string>
+    <string name="account_partition">分区：%1$s</string>
+    <string name="account_maildomain">Maildomain：%1$s</string>
+    <string name="account_hme">隐藏邮件地址：%1$s</string>
+</resources>
