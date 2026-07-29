@@ -400,6 +400,7 @@ class RichHideMyEmail(HideMyEmail):
                         "label": row["label"],
                         "created_at": created_at,
                         "is_active": bool(row["isActive"]),
+                        "anonymous_id": row.get("anonymousId") or "",
                     }
                 )
                 self.table.add_row(
@@ -411,6 +412,87 @@ class RichHideMyEmail(HideMyEmail):
 
         self.console.print(self.table)
         return {"ok": True, "addresses": addresses, "error": None}
+
+    async def _resolve(self, email: str) -> Optional[dict]:
+        """Looks up the iCloud record for an address, needed for its anonymousId."""
+        gen_res = await self.list_email()
+        if not self._check_response(gen_res, "list emails"):
+            return None
+
+        for row in gen_res["result"]["hmeEmails"]:
+            if row.get("hme") != email:
+                continue
+            if not row.get("anonymousId"):
+                self.last_error = {
+                    "code": None,
+                    "message": f'iCloud returned no identifier for "{email}"',
+                    "retry_after": None,
+                }
+                self.console.log(f"[bold red][ERR][/] {self.last_error['message']}")
+                return None
+            return row
+
+        self.last_error = {
+            "code": None,
+            "message": f'No Hide My Email address matching "{email}"',
+            "retry_after": None,
+        }
+        self.console.log(
+            f'[bold red][ERR][/] {self.last_error["message"]} / 未找到匹配的隐藏邮箱'
+        )
+        return None
+
+    async def set_active(self, email: str, active: bool) -> dict:
+        self.last_error = None
+        row = await self._resolve(email)
+        if row is None:
+            return {"ok": False, "email": email, "is_active": None, "error": self.last_error}
+
+        action = "reactivate" if active else "deactivate"
+        call = self.reactivate_email if active else self.deactivate_email
+        res = await call(row["anonymousId"])
+        if not self._check_response(res, f"{action} email", email):
+            return {"ok": False, "email": email, "is_active": None, "error": self.last_error}
+
+        self.console.log(
+            f'[bold green][OK][/] "{email}" - Successfully {action}d / 操作成功'
+        )
+        return {"ok": True, "email": email, "is_active": active, "error": None}
+
+    async def update_metadata(
+        self, email: str, label: Optional[str], note: Optional[str]
+    ) -> dict:
+        self.last_error = None
+        row = await self._resolve(email)
+        if row is None:
+            return {
+                "ok": False,
+                "email": email,
+                "label": None,
+                "note": None,
+                "error": self.last_error,
+            }
+
+        new_label = label if label is not None else row.get("label") or ""
+        new_note = note if note is not None else row.get("note") or ""
+        res = await self.update_email_metadata(row["anonymousId"], new_label, new_note)
+        if not self._check_response(res, "update email metadata", email):
+            return {
+                "ok": False,
+                "email": email,
+                "label": None,
+                "note": None,
+                "error": self.last_error,
+            }
+
+        self.console.log(f'[bold green][OK][/] "{email}" - Metadata updated / 已更新')
+        return {
+            "ok": True,
+            "email": email,
+            "label": new_label,
+            "note": new_note,
+            "error": None,
+        }
 
 
 @click.group()
@@ -587,6 +669,96 @@ def capturecookiecommand(cookie_file: str, region: str):
 
     if not ok:
         raise click.ClickException("Could not capture the iCloud cookie")
+
+
+@click.command()
+@click.argument("email")
+@click.option(
+    "--cookie-file",
+    default=DEFAULT_COOKIE_FILENAME,
+    help="Path to cookie file / Cookie 文件路径",
+    type=click.Path(),
+)
+@click.option(
+    "--region",
+    default=DEFAULT_REGION,
+    show_default=True,
+    type=REGION_CHOICE,
+    help="iCloud region to use / iCloud 区域",
+)
+@click.option(
+    "--result-json",
+    type=click.Path(dir_okay=False),
+    help="Write a machine-readable result to this file",
+)
+def deactivatecommand(email: str, cookie_file: str, region: str, result_json: Optional[str]):
+    "Stop an address from forwarding mail / 停用隐藏邮箱转发"
+    _run_address_command(
+        _set_active(email, False, cookie_file, region), result_json
+    )
+
+
+@click.command()
+@click.argument("email")
+@click.option(
+    "--cookie-file",
+    default=DEFAULT_COOKIE_FILENAME,
+    help="Path to cookie file / Cookie 文件路径",
+    type=click.Path(),
+)
+@click.option(
+    "--region",
+    default=DEFAULT_REGION,
+    show_default=True,
+    type=REGION_CHOICE,
+    help="iCloud region to use / iCloud 区域",
+)
+@click.option(
+    "--result-json",
+    type=click.Path(dir_okay=False),
+    help="Write a machine-readable result to this file",
+)
+def reactivatecommand(email: str, cookie_file: str, region: str, result_json: Optional[str]):
+    "Resume forwarding for a deactivated address / 恢复已停用的隐藏邮箱"
+    _run_address_command(_set_active(email, True, cookie_file, region), result_json)
+
+
+@click.command()
+@click.argument("email")
+@click.option("--label", help="New label / 新标签")
+@click.option("--note", help="New note / 新备注")
+@click.option(
+    "--cookie-file",
+    default=DEFAULT_COOKIE_FILENAME,
+    help="Path to cookie file / Cookie 文件路径",
+    type=click.Path(),
+)
+@click.option(
+    "--region",
+    default=DEFAULT_REGION,
+    show_default=True,
+    type=REGION_CHOICE,
+    help="iCloud region to use / iCloud 区域",
+)
+@click.option(
+    "--result-json",
+    type=click.Path(dir_okay=False),
+    help="Write a machine-readable result to this file",
+)
+def updatemetadatacommand(
+    email: str,
+    label: Optional[str],
+    note: Optional[str],
+    cookie_file: str,
+    region: str,
+    result_json: Optional[str],
+):
+    "Change the label or note of an address / 修改隐藏邮箱的标签或备注"
+    if label is None and note is None:
+        raise click.UsageError("Provide --label and/or --note / 请提供 --label 或 --note")
+    _run_address_command(
+        _update_metadata(email, label, note, cookie_file, region), result_json
+    )
 
 
 @click.group(name="inbox")
@@ -1076,6 +1248,36 @@ async def _list(
         return await hme.list(label_query, active)
 
 
+def _run_address_command(coro, result_json: Optional[str]) -> None:
+    try:
+        result = asyncio.run(coro)
+    except KeyboardInterrupt:
+        coro.close()
+        return
+
+    write_result_json(result_json, result)
+    if not result["ok"]:
+        raise click.ClickException(result["error"]["message"])
+
+
+async def _set_active(
+    email: str, active: bool, cookie_file: str, region: str = DEFAULT_REGION
+) -> dict:
+    async with RichHideMyEmail(cookie_file=cookie_file, region=region) as hme:
+        return await hme.set_active(email, active)
+
+
+async def _update_metadata(
+    email: str,
+    label: Optional[str],
+    note: Optional[str],
+    cookie_file: str,
+    region: str = DEFAULT_REGION,
+) -> dict:
+    async with RichHideMyEmail(cookie_file=cookie_file, region=region) as hme:
+        return await hme.update_metadata(email, label, note)
+
+
 async def _whoami(cookie_file: str, region: str = DEFAULT_REGION) -> dict:
     console = Console()
     if not os.path.exists(cookie_file):
@@ -1315,6 +1517,9 @@ cli.add_command(listcommand, name="list")
 cli.add_command(generatecommand, name="generate")
 cli.add_command(whoamicommand, name="whoami")
 cli.add_command(capturecookiecommand, name="capture-cookie")
+cli.add_command(deactivatecommand, name="deactivate")
+cli.add_command(reactivatecommand, name="reactivate")
+cli.add_command(updatemetadatacommand, name="update-metadata")
 cli.add_command(inboxgroup)
 
 if __name__ == "__main__":

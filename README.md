@@ -300,6 +300,21 @@ uv run hidemyemail list --active --cookie-file cookies.txt
 uv run hidemyemail list --inactive --cookie-file cookies.txt
 ```
 
+### Manage an Address
+
+```bash
+uv run hidemyemail deactivate abc123@icloud.com
+uv run hidemyemail reactivate abc123@icloud.com
+uv run hidemyemail update-metadata abc123@icloud.com --label "Newsletter" --note "Signed up 2026-07"
+```
+
+Deactivating stops an address from forwarding mail without giving up the address;
+it stays on your account and can be reactivated later. `update-metadata` keeps
+whichever of `--label` / `--note` you leave out.
+
+Each command looks the address up by its email, so no identifier is needed. That
+costs one extra `list` call per invocation.
+
 ### Account Check
 
 ```bash
