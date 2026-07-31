@@ -136,85 +136,85 @@ jobs:
           path: build/unsigned-${{ matrix.arch }}/
           if-no-files-found: error
 
+  # Sparkle's generate_appcast / sign_update / BinaryDelta are universal
+  # binaries, and signing is over the archive bytes — the tool's architecture
+  # need not match the app's. One arm64 runner therefore signs both arches
+  # instead of provisioning two macOS runners for shell work.
   sign:
     needs: macos
     environment: release
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-15
-            arch: arm64
-            cli_asset: hidemyemail-macos
-            app_label: Apple-Silicon
-          - runner: macos-15-intel
-            arch: x86_64
-            cli_asset: hidemyemail-macos-x86_64
-            app_label: Intel
-    runs-on: ${{ matrix.runner }}
+    runs-on: macos-15
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: unsigned-macos-${{ matrix.arch }}
+          pattern: unsigned-macos-*
           path: unsigned
 
-      - name: Generate signed appcast
+      - name: Generate signed appcasts
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         shell: bash
         run: |
-          updates="build/appcast-${{ matrix.arch }}"
-          archive="HideMyEmail-Generator-macOS-${{ matrix.app_label }}.zip"
-          tools="unsigned/tools"
+          tools="unsigned/unsigned-macos-arm64/tools"
           chmod +x \
             "$tools/BinaryDelta" \
             "$tools/generate_appcast" \
             "$tools/sign_update"
-          mkdir -p "$updates" dist
-          cp "unsigned/$archive" "$updates/$archive"
+          mkdir -p dist
 
-          printf '%s' "$SPARKLE_PRIVATE_KEY" \
-            | "$tools/generate_appcast" \
-                --ed-key-file - \
-                --download-url-prefix \
-                  "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/" \
-                --link "https://github.com/${GITHUB_REPOSITORY}" \
-                --maximum-deltas 0 \
-                -o "$updates/appcast-${{ matrix.arch }}.xml" \
-                "$updates"
+          for arch in arm64 x86_64; do
+            case "$arch" in
+              arm64) app_label=Apple-Silicon; cli_asset=hidemyemail-macos ;;
+              x86_64) app_label=Intel; cli_asset=hidemyemail-macos-x86_64 ;;
+            esac
 
-          cp "$updates/appcast-${{ matrix.arch }}.xml" dist/
-          appcast="dist/appcast-${{ matrix.arch }}.xml"
-          signature="$(sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p' "$appcast")"
-          test -n "$signature"
-          grep -Fq "/releases/download/${GITHUB_REF_NAME}/$archive" \
-            "$appcast"
-          printf '%s' "$SPARKLE_PRIVATE_KEY" \
-            | "$tools/sign_update" --verify --ed-key-file - \
-                "$updates/$archive" "$signature"
+            unsigned="unsigned/unsigned-macos-$arch"
+            updates="build/appcast-$arch"
+            archive="HideMyEmail-Generator-macOS-$app_label.zip"
+            mkdir -p "$updates"
+            cp "$unsigned/$archive" "$updates/$archive"
 
-          invalid_signature="${signature%?}A"
-          if printf '%s' "$SPARKLE_PRIVATE_KEY" \
-            | "$tools/sign_update" --verify --ed-key-file - \
-                "$updates/$archive" "$invalid_signature" >/dev/null 2>&1; then
-            echo "Sparkle accepted an invalid update signature." >&2
-            exit 1
-          fi
+            printf '%s' "$SPARKLE_PRIVATE_KEY" \
+              | "$tools/generate_appcast" \
+                  --ed-key-file - \
+                  --download-url-prefix \
+                    "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/" \
+                  --link "https://github.com/${GITHUB_REPOSITORY}" \
+                  --maximum-deltas 0 \
+                  -o "$updates/appcast-$arch.xml" \
+                  "$updates"
 
-          cp \
-            "unsigned/${{ matrix.cli_asset }}" \
-            "unsigned/HideMyEmail-Generator-macOS-${{ matrix.app_label }}.zip" \
-            "unsigned/HideMyEmail-Generator-macOS-${{ matrix.app_label }}.dmg" \
-            dist/
+            cp "$updates/appcast-$arch.xml" dist/
+            appcast="dist/appcast-$arch.xml"
+            signature="$(sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p' "$appcast")"
+            test -n "$signature"
+            grep -Fq "/releases/download/${GITHUB_REF_NAME}/$archive" \
+              "$appcast"
+            printf '%s' "$SPARKLE_PRIVATE_KEY" \
+              | "$tools/sign_update" --verify --ed-key-file - \
+                  "$updates/$archive" "$signature"
+
+            invalid_signature="${signature%?}A"
+            if printf '%s' "$SPARKLE_PRIVATE_KEY" \
+              | "$tools/sign_update" --verify --ed-key-file - \
+                  "$updates/$archive" "$invalid_signature" >/dev/null 2>&1; then
+              echo "Sparkle accepted an invalid update signature for $arch." >&2
+              exit 1
+            fi
+
+            cp \
+              "$unsigned/$cli_asset" \
+              "$unsigned/HideMyEmail-Generator-macOS-$app_label.zip" \
+              "$unsigned/HideMyEmail-Generator-macOS-$app_label.dmg" \
+              dist/
+          done
+
+          test "$(find dist -maxdepth 1 -type f | wc -l)" -eq 8
 
       - uses: actions/upload-artifact@v4
         with:
-          name: release-macos-${{ matrix.arch }}
-          path: |
-            dist/${{ matrix.cli_asset }}
-            dist/HideMyEmail-Generator-macOS-${{ matrix.app_label }}.zip
-            dist/HideMyEmail-Generator-macOS-${{ matrix.app_label }}.dmg
-            dist/appcast-${{ matrix.arch }}.xml
+          name: release-macos
+          path: dist/
           if-no-files-found: error
 
   release:
