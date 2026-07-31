@@ -90,7 +90,7 @@ jobs:
       - name: Test app
         run: |
           cd macos
-          xcodebuild test \
+          DEVELOPER_DIR="$(../scripts/xcode-developer-dir.sh)" xcodebuild test \
             -scheme HideMyEmailGenerator \
             -destination "platform=macOS,arch=${{ matrix.arch }}" \
             -derivedDataPath "$PWD/../build/macos-app-${{ matrix.arch }}/xcode" \

@@ -22,6 +22,13 @@ Run the macOS Swift tests with `xcodebuild` after changing the app.
 
 ### macOS build artifacts
 
+**Xcode 26 or newer is required.** `HME-Gen-icon.icon` is an Icon Composer
+document and only `actool` from Xcode 26 onwards can compile it. The build picks
+an Xcode via `scripts/xcode-developer-dir.sh` (first `/Applications` Xcode with
+major version >= 26, or an explicit `DEVELOPER_DIR`) rather than trusting the
+`/Applications/Xcode.app` symlink, which on the GitHub runners points at 16.4.
+Anything older fails with a clear error instead of building.
+
 After every change under `macos/Sources/`, run
 `scripts/build-macos-app.sh "$(uname -m)"` before handing off the work. The
 script removes and regenerates `build/macos-app-$ARCH` and the matching macOS
