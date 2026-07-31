@@ -19,13 +19,7 @@ if [[ "$(uname -m)" != "$ARCH" ]]; then
   exit 1
 fi
 
-if [[ -z "${DEVELOPER_DIR:-}" ]]; then
-  if [[ -d /Applications/Xcode.app/Contents/Developer ]]; then
-    DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
-  else
-    DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer
-  fi
-fi
+DEVELOPER_DIR="$("$ROOT/scripts/xcode-developer-dir.sh")"
 VERSION="${VERSION:-$(sed -n 's/^version = "\([^"]*\)"/\1/p' "$ROOT/pyproject.toml" | head -1)}"
 SPARKLE_FEED_URL="${SPARKLE_FEED_URL:-$DEFAULT_FEED_URL}"
 BUILD_ROOT="$ROOT/build/macos-app-$ARCH"
