@@ -1,6 +1,6 @@
 [project]
 name = "hidemyemail_generator"
-version = "2.1.1"
+version = "2.1.0"
 description = "Generate and manage iCloud Hide My Email addresses"
 readme = "README.md"
 requires-python = ">=3.12"

@@ -1,9 +1,13 @@
 name: Release
 
+# workflow_dispatch builds and tests everything but signs nothing and publishes
+# nothing, so the expensive macOS path can be exercised from a branch without
+# spending a version number on a tag that might not ship.
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -20,6 +24,7 @@ jobs:
           enable-cache: true
 
       - name: Validate version
+        if: github.ref_type == 'tag'
         shell: bash
         run: |
           version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' pyproject.toml | head -1)"
@@ -64,11 +69,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-15
+          - runner: macos-26
             arch: arm64
             cli_asset: hidemyemail-macos
             app_label: Apple-Silicon
-          - runner: macos-15-intel
+          - runner: macos-26-intel
             arch: x86_64
             cli_asset: hidemyemail-macos-x86_64
             app_label: Intel
@@ -101,7 +106,7 @@ jobs:
         run: |
           app="build/macos-app-${{ matrix.arch }}/HideMyEmail Generator.app"
           plist="$app/Contents/Info.plist"
-          version="${GITHUB_REF_NAME#v}"
+          version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' pyproject.toml | head -1)"
 
           test -x "$app/Contents/Resources/hidemyemail"
           test -x "$app/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate"
@@ -142,8 +147,9 @@ jobs:
   # instead of provisioning two macOS runners for shell work.
   sign:
     needs: macos
+    if: github.ref_type == 'tag'
     environment: release
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -219,6 +225,7 @@ jobs:
 
   release:
     needs: [windows, sign]
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     permissions:
       contents: write
