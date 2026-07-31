@@ -5,20 +5,21 @@ on:
     paths:
       - 'android/**'
       - '.github/workflows/android-ci.yml'
-      - '.gitignore'
-      - 'README.md'
-      - 'README.zh-CN.md'
   push:
     branches: [main]
     paths:
       - 'android/**'
       - '.github/workflows/android-ci.yml'
-      - '.gitignore'
-      - 'README.md'
-      - 'README.zh-CN.md'
 
 permissions:
   contents: read
+
+# Superseded PR runs are cancelled; pushes to main are not — post-merge runs are
+# the only place two independently-reviewed PRs get built together, and they
+# publish the APK artifact.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test-and-build:
@@ -39,10 +40,8 @@ jobs:
           cache: gradle
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-      - name: Run Android unit tests
-        run: bash ./gradlew testDebugUnitTest --no-daemon --stacktrace
-      - name: Assemble debug APK
-        run: bash ./gradlew assembleDebug --no-daemon --stacktrace
+      - name: Test and assemble debug APK
+        run: bash ./gradlew testDebugUnitTest assembleDebug --no-daemon --stacktrace
       - name: Upload unit test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -50,6 +49,7 @@ jobs:
           name: android-unit-test-results
           path: android/app/build/test-results/testDebugUnitTest/
           if-no-files-found: ignore
+          retention-days: 7
       - name: Upload debug APK
         if: success()
         uses: actions/upload-artifact@v4
@@ -57,3 +57,4 @@ jobs:
           name: HideMyEmail-Android-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+          retention-days: 7
