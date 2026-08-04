@@ -4,7 +4,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from hidemyemail_generator.main import RichHideMyEmail
+from hidemyemail_generator.inbox import connect_db, list_addresses, upsert_address
+from hidemyemail_generator.main import RichHideMyEmail, _write_through
 
 
 LIST_RESPONSE = {
@@ -112,6 +113,58 @@ class AddressManagementTests(unittest.TestCase):
         result = run(self.hme.update_metadata("example@icloud.com", "x", None))
         self.assertFalse(result["ok"])
         self.assertEqual(result["error"]["code"], "-41015")
+
+
+class WriteThroughTests(unittest.TestCase):
+    """An accepted iCloud edit has to land locally, or the list keeps serving
+    the pre-edit values until the next full sync."""
+
+    def setUp(self):
+        tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmpdir.cleanup)
+        self.db_file = str(Path(tmpdir.name) / "hidemyemail.db")
+        conn = connect_db(self.db_file)
+        upsert_address(conn, "example@icloud.com", label="Old", note="Old note")
+        conn.close()
+
+    def stored(self):
+        conn = connect_db(self.db_file)
+        try:
+            return list_addresses(conn)[0]
+        finally:
+            conn.close()
+
+    def test_metadata_edit_lands_locally(self):
+        _write_through(
+            self.db_file,
+            {
+                "ok": True,
+                "email": "example@icloud.com",
+                "label": "Renamed",
+                "note": "New note",
+            },
+        )
+        row = self.stored()
+        self.assertEqual(row["label"], "Renamed")
+        self.assertEqual(row["note"], "New note")
+
+    def test_cleared_note_is_not_reverted(self):
+        _write_through(
+            self.db_file,
+            {"ok": True, "email": "example@icloud.com", "label": "Old", "note": ""},
+        )
+        self.assertEqual(self.stored()["note"], "")
+
+    def test_forwarding_change_lands_locally(self):
+        _write_through(
+            self.db_file,
+            {"ok": True, "email": "example@icloud.com", "is_active": False},
+        )
+        row = self.stored()
+        self.assertEqual(row["is_active"], 0)
+        # A deactivate result carries no label or note; they must survive it.
+        self.assertEqual(row["label"], "Old")
+        self.assertEqual(row["note"], "Old note")
 
 
 if __name__ == "__main__":
