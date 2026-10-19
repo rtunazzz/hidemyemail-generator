@@ -3,6 +3,7 @@ import base64
 import datetime
 import json
 import os
+import shlex
 import shutil
 import sys
 from typing import Union, List, Optional
@@ -185,22 +186,56 @@ def load_cookie_context(cookie_file: str, region: str) -> tuple[str, str]:
         )
         return cookie.strip(), maildomain_host
 
-    cookie_arg = re.search(
-        r"(?:^|\s)(?:-b|--cookie)\s+\"([^\"]+)\"",
-        normalized_content,
-        re.IGNORECASE,
-    )
-    if cookie_arg:
-        return cookie_arg.group(1).strip(), maildomain_host
+    if not normalized_content:
+        return "", maildomain_host
 
-    cookie_header = re.search(
-        r"cookie\s*:\s*([^'\"\r\n]+)", normalized_content, re.IGNORECASE
-    )
-    if cookie_header:
-        return cookie_header.group(1).strip(), maildomain_host
+    cookie = _cookie_from_curl(content)
+    if cookie is None:
+        cookie = _cookie_from_json(normalized_content)
+    if cookie is None:
+        cookie = _cookie_from_header(normalized_content)
+    if cookie is None:
+        raise click.ClickException(
+            f"Could not read a cookie from {cookie_file}. Paste a Copy as cURL "
+            "command, a Cookie-Editor JSON export, or a raw Cookie header string."
+        )
+    return cookie.strip(), maildomain_host
 
-    lines = normalized_content.splitlines()
-    return (lines[0].strip() if lines else ""), maildomain_host
+
+def _cookie_from_curl(content: str) -> Optional[str]:
+    try:
+        tokens = shlex.split(content.replace("\\\n", " "))
+    except ValueError:
+        return None
+    for index, token in enumerate(tokens[:-1]):
+        if token in ("-b", "--cookie"):
+            return tokens[index + 1]
+        if token in ("-H", "--header"):
+            name, _, value = tokens[index + 1].partition(":")
+            if name.strip().lower() == "cookie":
+                return value
+    return None
+
+
+def _cookie_from_json(content: str) -> Optional[str]:
+    try:
+        cookies = json.loads(content)
+    except ValueError:
+        return None
+    if not isinstance(cookies, list) or not cookies:
+        return None
+    if not all(
+        isinstance(item, dict) and "name" in item and "value" in item
+        for item in cookies
+    ):
+        return None
+    return "; ".join(f"{item['name']}={item['value']}" for item in cookies)
+
+
+def _cookie_from_header(content: str) -> Optional[str]:
+    first_line = content.splitlines()[0]
+    header = re.match(r"(?:cookie\s*:\s*)?([\w.-]+=.*)$", first_line, re.IGNORECASE)
+    return header.group(1) if header else None
 
 
 async def fetch_account_info(cookie_file: str, region: str) -> dict:
