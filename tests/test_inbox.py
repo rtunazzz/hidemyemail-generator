@@ -221,6 +221,15 @@ class AddressWriteTests(DatabaseTestCase):
             list_addresses(conn)[0]["created_at"], "2026-01-15T09:00:00+00:00"
         )
 
+    def test_later_writers_keep_the_original_source(self):
+        conn = connect_db(self.db_file)
+        self.addCleanup(conn.close)
+        upsert_address(conn, "a@icloud.com", source="generated")
+        upsert_address(conn, "a@icloud.com", source="icloud")
+        upsert_address(conn, "a@icloud.com", source="inbox")
+
+        self.assertEqual(list_addresses(conn)[0]["source"], "generated")
+
     def test_filters_by_forwarding_state_and_query(self):
         conn = connect_db(self.db_file)
         self.addCleanup(conn.close)

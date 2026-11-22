@@ -229,7 +229,6 @@ def upsert_address(
                 WHEN addresses.state = 'unused' THEN excluded.state
                 ELSE addresses.state
             END,
-            source = excluded.source,
             note = COALESCE(NULLIF(excluded.note, ''), addresses.note),
             is_active = COALESCE(excluded.is_active, addresses.is_active),
             batch_id = COALESCE(excluded.batch_id, addresses.batch_id),
